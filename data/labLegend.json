@@ -1,0 +1,16 @@
+[
+  {"id":"LAB 1","name":"ECE Computer LAB - 1"},
+  {"id":"LAB 2","name":"ECE Computer LAB - 2"},
+  {"id":"LAB 3","name":"ECE Machine LAB"},
+  {"id":"LAB 4","name":"ECE Circuit LAB"},
+  {"id":"LAB 5","name":"PHY LAB"},
+  {"id":"LAB 6","name":"CHEM LAB"},
+  {"id":"LAB 7","name":"ENG LAB"},
+  {"id":"LAB 8","name":"EEE Machine LAB"},
+  {"id":"LAB 9","name":"EEE Measurement LAB"},
+  {"id":"LAB 10","name":"EEE Communication LAB"},
+  {"id":"LAB 11","name":"Heat Engine Lab"},
+  {"id":"LAB 12","name":"MTE Robotics"},
+  {"id":"LAB 13","name":"EEE Biomedical Lab"},
+  {"id":"LAB 14","name":"EEE Electronics Lab"}
+]

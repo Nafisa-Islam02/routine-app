@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VoltSpot — EV Parking &amp; Charging</title>
+<style>
+  :root{
+    --bg: #0b1512;
+    --panel: #10201b;
+    --panel-2: #16281f;
+    --line: #22392f;
+    --text: #eaf3ee;
+    --muted: #8fa89c;
+    --volt: #c8ff4d;
+    --volt-dim: #6f8a35;
+    --amber: #ffb454;
+    --red: #ff6b5e;
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background: radial-gradient(1200px 800px at 50% -10%, #142a22 0%, var(--bg) 55%);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--text);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    padding: 24px 12px;
+  }
+  .phone{
+    width: 380px;
+    max-width: 100%;
+    height: 780px;
+    max-height: 92vh;
+    background: var(--panel);
+    border-radius: 34px;
+    border: 1px solid #24382f;
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.02);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+  .statusbar{
+    height:24px;
+    flex-shrink:0;
+  }
+  .screen{
+    flex:1;
+    overflow-y:auto;
+    padding: 6px 20px 20px;
+    display:none;
+  }
+  .screen.active{display:flex; flex-direction:column;}
+
+  /* Header */
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin: 6px 0 18px;
+  }
+  .bolt{
+    width:26px;height:26px;
+    display:flex;align-items:center;justify-content:center;
+    background: var(--volt);
+    border-radius:8px;
+    color:#0b1512;
+    font-weight:800;
+    font-size:15px;
+  }
+  .brand-name{
+    font-weight:700;
+    font-size:15px;
+    letter-spacing:0.3px;
+  }
+  .brand-name span{ color: var(--volt); }
+
+  h1.page-title{
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    letter-spacing: -0.3px;
+  }
+  .page-sub{
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0 0 18px;
+  }
+
+  /* Station cards */
+  .station-card{
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 12px;
+    cursor:pointer;
+    transition: transform .12s ease, border-color .12s ease;
+  }
+  .station-card:hover{ border-color:#345444; transform: translateY(-1px); }
+  .station-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:10px;
+  }
+  .station-name{ font-weight:600; font-size:15px; margin:0 0 4px; }
+  .station-meta{ color:var(--muted); font-size:12.5px; }
+  .pill{
+    flex-shrink:0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    white-space:nowrap;
+  }
+  .pill.free{ background: rgba(200,255,77,0.15); color: var(--volt); }
+  .pill.low{ background: rgba(255,180,84,0.15); color: var(--amber); }
+  .pill.full{ background: rgba(255,107,94,0.15); color: var(--red); }
+
+  .meter-row{
+    display:flex; align-items:center; gap:8px; margin-top:10px;
+  }
+  .meter{
+    flex:1; height:5px; background:#1c2f26; border-radius:4px; overflow:hidden;
+  }
+  .meter-fill{ height:100%; background: var(--volt); border-radius:4px; }
+  .meter-label{ font-size:11px; color:var(--muted); flex-shrink:0; }
+
+  /* Detail screen */
+  .back-row{
+    display:flex; align-items:center; gap:6px;
+    color: var(--muted); font-size: 13px; margin: 10px 0 16px;
+    cursor:pointer; width:fit-content;
+  }
+  .back-row:hover{ color: var(--text); }
+
+  .detail-panel{
+    background: var(--panel-2);
+    border:1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 6px 16px;
+    margin: 16px 0;
+  }
+  .detail-row{
+    display:flex; justify-content:space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
+  .detail-row:last-child{ border-bottom:none; }
+  .detail-row .label{ color: var(--muted); }
+  .detail-row .value{ font-weight:600; }
+
+  .cta{
+    border:none;
+    border-radius: 12px;
+    padding: 15px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor:pointer;
+    width:100%;
+    margin-top: auto;
+  }
+  .cta.primary{ background: var(--volt); color:#0b1512; }
+  .cta.primary:disabled{ background:#3a4a3f; color:#7b8f83; cursor:not-allowed; }
+  .cta.danger{ background: transparent; color: var(--red); border:1px solid rgba(255,107,94,0.4); }
+  .cta.ghost{ background: transparent; color: var(--volt); border:1px solid var(--volt-dim); }
+
+  /* Reservation screen */
+  .confirm-badge{
+    align-self:flex-start;
+    background: rgba(200,255,77,0.12);
+    color: var(--volt);
+    font-size: 12px;
+    font-weight:700;
+    padding: 6px 12px;
+    border-radius: 999px;
+    margin-bottom: 14px;
+  }
+  .empty-state{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    color: var(--muted);
+    gap: 14px;
+  }
+  .empty-state .bolt-big{
+    width:56px;height:56px;border-radius:16px;
+    background: var(--panel-2); border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:24px;
+  }
+
+  /* Bottom nav */
+  .bottomnav{
+    display:flex;
+    border-top: 1px solid var(--line);
+    background: var(--panel);
+    flex-shrink:0;
+  }
+  .navbtn{
+    flex:1;
+    text-align:center;
+    padding: 14px 0 18px;
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight:600;
+    cursor:pointer;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+  }
+  .navbtn.active{ color: var(--volt); }
+  .navicon{ font-size:18px; }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="statusbar"></div>
+
+  <!-- HOME SCREEN -->
+  <div class="screen active" id="screen-home">
+    <div class="brand">
+      <div class="bolt">⚡</div>
+      <div class="brand-name">Volt<span>Spot</span></div>
+    </div>
+    <h1 class="page-title">Nearby Stations</h1>
+    <p class="page-sub">Live availability, updated in real time</p>
+    <div id="station-list"></div>
+  </div>
+
+  <!-- DETAIL SCREEN -->
+  <div class="screen" id="screen-detail">
+    <div class="back-row" onclick="showScreen('home')">&larr; Back to stations</div>
+    <h1 class="page-title" id="detail-name">Station name</h1>
+    <p class="page-sub" id="detail-distance">— km away</p>
+
+    <div class="detail-panel" id="detail-rows"></div>
+
+    <button class="cta primary" id="reserve-btn" onclick="reserveStation()">Reserve This Spot</button>
+  </div>
+
+  <!-- RESERVATION SCREEN -->
+  <div class="screen" id="screen-reservation">
+    <div class="brand">
+      <div class="bolt">⚡</div>
+      <div class="brand-name">Volt<span>Spot</span></div>
+    </div>
+    <h1 class="page-title">My Reservation</h1>
+    <p class="page-sub">Your active booking</p>
+
+    <div id="reservation-content"></div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottomnav">
+    <div class="navbtn active" id="nav-home" onclick="showScreen('home')">
+      <div class="navicon">🅿️</div>
+      Stations
+    </div>
+    <div class="navbtn" id="nav-reservation" onclick="showScreen('reservation')">
+      <div class="navicon">🎫</div>
+      Reservation
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---------- MOCK DATA ----------
+  const STATIONS = [
+    { id:1, name:'Greenline Mall Charging Hub', distanceKm:1.2, chargerType:'DC Fast', connector:'CCS', speedKw:60, pricePerKwh:18, totalChargers:6, available:2, wait:'~5 min' },
+    { id:2, name:'Riverside EV Station', distanceKm:2.8, chargerType:'AC', connector:'Type 2', speedKw:22, pricePerKwh:12, totalChargers:4, available:0, wait:'~20 min' },
+    { id:3, name:'City Center Fast Charge', distanceKm:3.5, chargerType:'DC Fast', connector:'CHAdeMO', speedKw:50, pricePerKwh:20, totalChargers:8, available:5, wait:'No wait' },
+  ];
+
+  let selectedStation = null;
+  let activeReservation = null;
+
+  // ---------- RENDER: STATION LIST ----------
+  function renderStationList(){
+    const list = document.getElementById('station-list');
+    list.innerHTML = '';
+    STATIONS.forEach(station => {
+      const pct = Math.round((station.available / station.totalChargers) * 100);
+      const pillClass = station.available === 0 ? 'full' : (pct <= 30 ? 'low' : 'free');
+      const pillText = station.available === 0 ? 'Full' : `${station.available} free`;
+
+      const card = document.createElement('div');
+      card.className = 'station-card';
+      card.onclick = () => openDetail(station.id);
+      card.innerHTML = `
+        <div class="station-top">
+          <div>
+            <p class="station-name">${station.name}</p>
+            <p class="station-meta">${station.distanceKm} km · ${station.chargerType} · ${station.connector}</p>
+          </div>
+          <div class="pill ${pillClass}">${pillText}</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter"><div class="meter-fill" style="width:${pct}%"></div></div>
+          <div class="meter-label">${station.available}/${station.totalChargers}</div>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+  }
+
+  // ---------- RENDER: DETAIL ----------
+  function openDetail(id){
+    selectedStation = STATIONS.find(s => s.id === id);
+    document.getElementById('detail-name').textContent = selectedStation.name;
+    document.getElementById('detail-distance').textContent = `${selectedStation.distanceKm} km away`;
+
+    document.getElementById('detail-rows').innerHTML = `
+      ${detailRow('Charger type', selectedStation.chargerType)}
+      ${detailRow('Connector', selectedStation.connector)}
+      ${detailRow('Charging speed', selectedStation.speedKw + ' kW')}
+      ${detailRow('Price', '৳' + selectedStation.pricePerKwh + ' / kWh')}
+      ${detailRow('Availability', selectedStation.available + ' / ' + selectedStation.totalChargers + ' free')}
+      ${detailRow('Est. wait time', selectedStation.wait)}
+    `;
+
+    const btn = document.getElementById('reserve-btn');
+    if(selectedStation.available === 0){
+      btn.textContent = 'No Chargers Available';
+      btn.disabled = true;
+    } else {
+      btn.textContent = 'Reserve This Spot';
+      btn.disabled = false;
+    }
+
+    showScreen('detail');
+  }
+
+  function detailRow(label, value){
+    return `<div class="detail-row"><span class="label">${label}</span><span class="value">${value}</span></div>`;
+  }
+
+  // ---------- RESERVE ACTION ----------
+  function reserveStation(){
+    activeReservation = selectedStation;
+    renderReservation();
+    showScreen('reservation');
+  }
+
+  function cancelReservation(){
+    activeReservation = null;
+    renderReservation();
+    showScreen('home');
+  }
+
+  // ---------- RENDER: RESERVATION ----------
+  function renderReservation(){
+    const container = document.getElementById('reservation-content');
+    if(!activeReservation){
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="bolt-big">🅿️</div>
+          <p>No active reservation yet.<br/>Reserve a spot from the station list.</p>
+          <button class="cta ghost" style="width:auto; padding:12px 20px;" onclick="showScreen('home')">Find a Station</button>
+        </div>
+      `;
+      return;
+    }
+    container.innerHTML = `
+      <div class="confirm-badge">✓ Confirmed</div>
+      <div class="detail-panel">
+        ${detailRow('Station', activeReservation.name)}
+        ${detailRow('Connector', activeReservation.connector)}
+        ${detailRow('Status', 'Waiting for arrival')}
+        ${detailRow('Expires in', '15 minutes')}
+      </div>
+      <button class="cta danger" onclick="cancelReservation()">Cancel Reservation</button>
+    `;
+  }
+
+  // ---------- NAVIGATION ----------
+  function showScreen(name){
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + name).classList.add('active');
+
+    document.getElementById('nav-home').classList.toggle('active', name === 'home');
+    document.getElementById('nav-reservation').classList.toggle('active', name === 'reservation');
+  }
+
+  // ---------- INIT ----------
+  renderStationList();
+  renderReservation();
+</script>
+
+</body>
+</html>

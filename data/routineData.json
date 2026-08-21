@@ -1,0 +1,105 @@
+[
+  {"day":"Saturday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":2,"courseCode":"HUM 1117","teacher":"MHS","room":"R-404","color":""},
+  {"day":"Saturday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":3,"courseCode":"PHY 1117","teacher":"MAH","room":"R-404","color":""},
+  {"day":"Saturday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":4,"courseCode":"ECE 1103","teacher":"HBK","room":"R-404","color":"blue"},
+  {"day":"Saturday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":5,"courseCode":"MATH 1117","teacher":"MRK","room":"R-404","color":""},
+  {"day":"Saturday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":6,"courseCode":"ECE 1101","teacher":"MAH","room":"R-404","color":"gray"},
+
+  {"day":"Saturday","batch":"2nd Year Odd Semester 2024 Series","type":"lab","block":"A","courseCode":"ECE 2104","teacher":"MFA+NIS","room":"LAB-1","color":"yellow"},
+  {"day":"Saturday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":4,"courseCode":"ECE 2105","teacher":"MKG+MI","room":"R-403","color":"cyan"},
+  {"day":"Saturday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":5,"courseCode":"Math 2117","teacher":"MZA","room":"R-403","color":""},
+  {"day":"Saturday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":6,"courseCode":"ECE 2111","teacher":"NRP+MNT","room":"R-403","color":""},
+
+  {"day":"Saturday","batch":"2nd Year Even Semester 2023 Series","type":"lab","block":"A","courseCode":"ECE 2200","teacher":"MAH+NRP+MNT","room":"LAB-4","color":""},
+  {"day":"Saturday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":4,"courseCode":"MATH 2217","teacher":"MI","room":"R-402","color":""},
+  {"day":"Saturday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":5,"courseCode":"ECE 2213","teacher":"MFA+NRP","room":"R-402","color":""},
+  {"day":"Saturday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":6,"courseCode":"ECE 2215","teacher":"NIS","room":"R-402","color":""},
+
+  {"day":"Saturday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":1,"courseCode":"ECE 3207","teacher":"MAH+MNT","room":"R-401","color":"gray"},
+  {"day":"Saturday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":2,"courseCode":"ECE 3221","teacher":"HBK+NIS","room":"R-401","color":"blue"},
+  {"day":"Saturday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":3,"courseCode":"ME 3219","teacher":"MMR/MRP","room":"R-401","color":""},
+  {"day":"Saturday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":4,"courseCode":"ECE 3205","teacher":"MFA+MKG","room":"R-401","color":"yellow"},
+
+  {"day":"Saturday","batch":"4th Year Odd Semester 2021 Series","type":"lab","block":"C","courseCode":"ECE 4000","teacher":"ALL Faculty","room":"Lab-ALL","color":""},
+
+  {"day":"Sunday","batch":"1st Year Odd Semester 2025 Series","type":"lab","block":"A","courseCode":"Hum 1118","teacher":"SA","room":"Lab-7","color":""},
+  {"day":"Sunday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":4,"courseCode":"ECE 1103","teacher":"HBK","room":"R-404","color":"blue"},
+  {"day":"Sunday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":5,"courseCode":"PHY 1117","teacher":"MFH","room":"R-404","color":""},
+  {"day":"Sunday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":6,"courseCode":"MATH 1117","teacher":"MZA","room":"R-404","color":""},
+
+  {"day":"Sunday","batch":"2nd Year Odd Semester 2024 Series","type":"lab","block":"A","courseCode":"ECE 2106/2112","teacher":"MKG+MI/NRP+MNT","room":"LAB-14/LAB-2","color":"cyan"},
+  {"day":"Sunday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":4,"courseCode":"ECE 2103","teacher":"MFA+NIS","room":"R-403","color":"yellow"},
+  {"day":"Sunday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":5,"courseCode":"Chem 2117","teacher":"SR","room":"R-403","color":""},
+  {"day":"Sunday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":6,"courseCode":"Math 2117","teacher":"MZH","room":"R-403","color":""},
+  {"day":"Sunday","batch":"2nd Year Odd Semester 2024 Series","type":"lab","block":"C","courseCode":"ECE 2100","teacher":"All Faculty","room":"LAB-All","color":"yellow"},
+
+  {"day":"Sunday","batch":"2nd Year Even Semester 2023 Series","type":"lab","block":"A","courseCode":"ECE 2214/2216","teacher":"MFA+NRP/NIS","room":"LAB-1/R-401","color":""},
+  {"day":"Sunday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":4,"courseCode":"MATH 2217","teacher":"MI","room":"R-402","color":""},
+  {"day":"Sunday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":5,"courseCode":"ECE 2215","teacher":"NIS","room":"R-402","color":""},
+
+  {"day":"Sunday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":1,"courseCode":"ME 3219","teacher":"MMR/MRP","room":"R-402","color":""},
+  {"day":"Sunday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":2,"courseCode":"HUM 3217","teacher":"TK","room":"R-402","color":""},
+  {"day":"Sunday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":3,"courseCode":"ECE 3205","teacher":"MFA+MKG","room":"R-402","color":"yellow"},
+  {"day":"Sunday","batch":"3rd Year Even Semester 2022 Series","type":"lab","block":"B","courseCode":"ECE 3200","teacher":"GKH+NRP","room":"R-401","color":""},
+
+  {"day":"Monday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":1,"courseCode":"ECE 1103","teacher":"HBK","room":"R-404","color":"blue"},
+  {"day":"Monday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":2,"courseCode":"PHY 1117","teacher":"MFH","room":"R-404","color":""},
+  {"day":"Monday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":3,"courseCode":"HUM 1117","teacher":"OF","room":"R-404","color":""},
+  {"day":"Monday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":4,"courseCode":"ECE 1101","teacher":"SMAR","room":"R-404","color":""},
+
+  {"day":"Monday","batch":"2nd Year Odd Semester 2024 Series","type":"lab","block":"A","courseCode":"ECE 2104","teacher":"MFA+NIS","room":"LAB-1","color":"yellow"},
+  {"day":"Monday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":4,"courseCode":"Chem 2117","teacher":"SR","room":"R-403","color":""},
+  {"day":"Monday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":5,"courseCode":"ECE 2111","teacher":"NRP+MNT","room":"R-404","color":""},
+  {"day":"Monday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":6,"courseCode":"ECE 2103","teacher":"MFA+NIS","room":"R-403","color":"yellow"},
+  {"day":"Monday","batch":"2nd Year Odd Semester 2024 Series","type":"lab","block":"C","courseCode":"Departmental Meeting / OBE Activity / Student Counselling","teacher":"-","room":"-","color":"neutral"},
+
+  {"day":"Monday","batch":"2nd Year Even Semester 2023 Series","type":"lab","block":"A","courseCode":"ECE 2200","teacher":"MAH+NRP+MNT","room":"LAB-4","color":""},
+  {"day":"Monday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":4,"courseCode":"ECE 2213","teacher":"MFA+NRP","room":"R-402","color":""},
+  {"day":"Monday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":5,"courseCode":"ECE 2207","teacher":"FT","room":"R-402","color":"orange"},
+  {"day":"Monday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":6,"courseCode":"HUM 2217","teacher":"MRI","room":"R-402","color":""},
+  {"day":"Monday","batch":"2nd Year Even Semester 2023 Series","type":"lab","block":"C","courseCode":"Departmental Meeting / OBE Activity / Student Counselling","teacher":"-","room":"-","color":"neutral"},
+
+  {"day":"Monday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":2,"courseCode":"ECE 3221","teacher":"HBK/NIS","room":"R-402","color":"blue"},
+  {"day":"Monday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":3,"courseCode":"ME 3219","teacher":"MMR/MRP","room":"R-402","color":""},
+  {"day":"Monday","batch":"3rd Year Even Semester 2022 Series","type":"lab","block":"B","courseCode":"ECE 3222","teacher":"HBK+NIS","room":"Lab 2","color":"blue"},
+  {"day":"Monday","batch":"3rd Year Even Semester 2022 Series","type":"lab","block":"C","courseCode":"Departmental Meeting / OBE Activity / Student Counselling","teacher":"-","room":"-","color":"neutral"},
+
+  {"day":"Tuesday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":1,"courseCode":"ECE 1101","teacher":"MAH","room":"R-404","color":"gray"},
+  {"day":"Tuesday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":2,"courseCode":"MATH 1117","teacher":"MRK","room":"R-404","color":""},
+  {"day":"Tuesday","batch":"1st Year Odd Semester 2025 Series","type":"class","period":3,"courseCode":"HUM 1117","teacher":"OF","room":"R-404","color":""},
+  {"day":"Tuesday","batch":"1st Year Odd Semester 2025 Series","type":"lab","block":"B","courseCode":"ECE 1102 / ECE 1104","teacher":"MKG+MNT / HBK","room":"Lab-4 / Lab-2","color":""},
+
+  {"day":"Tuesday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":3,"courseCode":"ECE 2103","teacher":"MFA+NIS","room":"R-403","color":"yellow"},
+  {"day":"Tuesday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":4,"courseCode":"Chem 2117","teacher":"AAI","room":"R-404","color":""},
+  {"day":"Tuesday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":5,"courseCode":"Math 2117","teacher":"MZA","room":"R-404","color":""},
+  {"day":"Tuesday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":6,"courseCode":"ECE 2105","teacher":"MKG+MI","room":"R-404","color":"cyan"},
+
+  {"day":"Tuesday","batch":"2nd Year Even Semester 2023 Series","type":"lab","block":"A","courseCode":"ECE 2214/2216","teacher":"MFA+NRP/NIS","room":"LAB-1/2","color":""},
+  {"day":"Tuesday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":4,"courseCode":"ECE 2213","teacher":"MFA+NRP","room":"R-403","color":""},
+  {"day":"Tuesday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":5,"courseCode":"HUM 2217","teacher":"SI","room":"R-403","color":""},
+  {"day":"Tuesday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":6,"courseCode":"ECE 2207","teacher":"FT","room":"R-403","color":"orange"},
+
+  {"day":"Tuesday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":4,"courseCode":"ECE 3205","teacher":"MFA+MKG","room":"R-402","color":"yellow"},
+  {"day":"Tuesday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":5,"courseCode":"HUM 3217","teacher":"KF","room":"R-402","color":""},
+  {"day":"Tuesday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":6,"courseCode":"ECE 3207","teacher":"MAH/MNT","room":"R-402","color":"gray"},
+  {"day":"Tuesday","batch":"3rd Year Even Semester 2022 Series","type":"lab","block":"C","courseCode":"ECE 3200","teacher":"GKH+NRP","room":"R-401","color":""},
+
+  {"day":"Wednesday","batch":"1st Year Odd Semester 2025 Series","type":"lab","block":"B","courseCode":"PHY 1118 / ECE 1100","teacher":"MSH+MSI / MFA","room":"Lab-5 / Lab-1","color":"yellow"},
+  {"day":"Wednesday","batch":"1st Year Odd Semester 2025 Series","type":"lab","block":"C","courseCode":"ECE 1102 / 1104","teacher":"MKG+MNT / HBK","room":"Lab-4 / Lab-1","color":""},
+
+  {"day":"Wednesday","batch":"2nd Year Odd Semester 2024 Series","type":"lab","block":"A","courseCode":"Chem 2118","teacher":"SR+AAI","room":"Lab-6","color":""},
+  {"day":"Wednesday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":4,"courseCode":"ECE 2111","teacher":"NRP+MNT","room":"R-404","color":""},
+  {"day":"Wednesday","batch":"2nd Year Odd Semester 2024 Series","type":"class","period":5,"courseCode":"ECE 2105","teacher":"MKG+MI","room":"R-404","color":"cyan"},
+
+  {"day":"Wednesday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":3,"courseCode":"ECE 2207","teacher":"FT","room":"R-402","color":"orange"},
+  {"day":"Wednesday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":4,"courseCode":"MATH 2217","teacher":"MI","room":"R-403","color":""},
+  {"day":"Wednesday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":5,"courseCode":"ECE 2215","teacher":"NIS","room":"R-403","color":""},
+  {"day":"Wednesday","batch":"2nd Year Even Semester 2023 Series","type":"class","period":6,"courseCode":"HUM 2217","teacher":"MRI","room":"R-403","color":""},
+  {"day":"Wednesday","batch":"2nd Year Even Semester 2023 Series","type":"lab","block":"C","courseCode":"ECE 2208","teacher":"FT","room":"LAB-8","color":"orange"},
+
+  {"day":"Wednesday","batch":"3rd Year Even Semester 2022 Series","type":"lab","block":"A","courseCode":"ECE 3208 / 3206","teacher":"MAH+MNT / MFA+MKG","room":"Lab 10 / Lab-3","color":"yellow"},
+  {"day":"Wednesday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":4,"courseCode":"HUM 3217","teacher":"KF","room":"R-402","color":""},
+  {"day":"Wednesday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":5,"courseCode":"ECE 3207","teacher":"MAH/MNT","room":"R-402","color":"gray"},
+  {"day":"Wednesday","batch":"3rd Year Even Semester 2022 Series","type":"class","period":6,"courseCode":"ECE 3221","teacher":"HBK/NIS","room":"R-402","color":"blue"},
+  {"day":"Wednesday","batch":"3rd Year Even Semester 2022 Series","type":"lab","block":"C","courseCode":"ME 3220","teacher":"MRP","room":"Lab-11","color":""}
+]
