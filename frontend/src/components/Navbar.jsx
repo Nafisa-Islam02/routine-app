@@ -14,6 +14,9 @@ export default function Navbar() {
         {(user?.role === 'admin' || user?.role === 'teacher') && (
           <Link to="/teacher">Manage Routine</Link>
         )}
+        {(user?.role === 'admin' || user?.role === 'teacher') && (
+          <Link to="/dynamic-routine">Dynamic Routine</Link>
+        )}
         {user ? (
           <button
             onClick={() => { logout(); navigate('/login'); }}

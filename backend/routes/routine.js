@@ -8,11 +8,13 @@ const {
   updateRoutine,
   deleteRoutine,
   getHistory,
+  generateDynamicRoutine,
 } = require('../controllers/routineController');
 
 router.get('/', auth, getRoutines);
 router.get('/:id/history', auth, getHistory);
 router.post('/', auth, requireRole('admin', 'teacher'), createRoutine);
+router.post('/dynamic', auth, requireRole('admin', 'teacher'), generateDynamicRoutine);
 router.put('/:id', auth, requireRole('admin', 'teacher'), updateRoutine);
 router.delete('/:id', auth, requireRole('admin', 'teacher'), deleteRoutine);
 

@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import TeacherEditor from './pages/TeacherEditor';
+import DynamicRoutine from './pages/DynamicRoutine';
 
 export default function App() {
   return (
@@ -28,6 +29,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={['admin', 'teacher']}>
               <TeacherEditor />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dynamic-routine"
+          element={
+            <ProtectedRoute roles={['admin', 'teacher']}>
+              <DynamicRoutine />
             </ProtectedRoute>
           }
         />
