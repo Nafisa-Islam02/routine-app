@@ -12,24 +12,4 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Give every caller a consistent, human-readable message to fall back on.
-// Previously, any request that never got a response at all (backend down,
-// wrong VITE_API_URL, CORS block, DNS/connection failure) left
-// `err.response` undefined, so `err.response?.data?.message` was undefined
-// too and every page fell back to its own generic "Something went wrong"
-// string with zero information in it. This attaches a specific,
-// diagnosis-friendly message in that case so it's obvious it's a
-// connectivity problem rather than a real validation/server error.
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (!error.response) {
-      error.friendlyMessage = `Can't reach the server at ${api.defaults.baseURL}. Make sure the backend is running and VITE_API_URL is set correctly.`;
-    } else {
-      error.friendlyMessage = error.response.data?.message || `Server error (${error.response.status}).`;
-    }
-    return Promise.reject(error);
-  }
-);
-
 export default api;
