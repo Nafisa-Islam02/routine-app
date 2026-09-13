@@ -10,6 +10,7 @@ import { COLOR_OPTIONS, DEFAULT_COLOR } from '../context/colors';
 import RoutineGrid from '../components/RoutineGrid';
 import RoutineHeader from '../components/RoutineHeader';
 import Notification from '../components/Notification';
+import WeeklySheet from '../components/WeeklySheet';
 
 const SERIES_OPTIONS = Object.keys(courseCatalog);
 
@@ -43,6 +44,7 @@ export default function DynamicRoutine() {
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [sheetBatch, setSheetBatch] = useState('');
 
   const fetchRoutines = useCallback(async () => {
     const params = {};
@@ -52,6 +54,19 @@ export default function DynamicRoutine() {
   }, [user]);
 
   useEffect(() => { fetchRoutines(); }, [fetchRoutines]);
+
+  const sheetBatchOptions = useMemo(
+    () => Array.from(new Set(routines.map((r) => r.batch))),
+    [routines]
+  );
+
+  useEffect(() => {
+    if (sheetBatchOptions.length === 0) {
+      setSheetBatch('');
+    } else if (!sheetBatchOptions.includes(sheetBatch)) {
+      setSheetBatch(sheetBatchOptions[0]);
+    }
+  }, [sheetBatchOptions, sheetBatch]);
 
   useEffect(() => {
     function handleUpdate() { fetchRoutines(); }
@@ -181,7 +196,7 @@ export default function DynamicRoutine() {
       setRows([emptyRow(user)]);
       fetchRoutines();
     } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong generating the routine.');
+      setError(err.friendlyMessage || err.response?.data?.message || 'Something went wrong generating the routine.');
     } finally {
       setSubmitting(false);
     }
@@ -195,7 +210,7 @@ export default function DynamicRoutine() {
       setToast('Slot removed.');
       fetchRoutines();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to delete');
+      setError(err.friendlyMessage || err.response?.data?.message || 'Failed to delete');
     }
   }
 
@@ -209,7 +224,7 @@ export default function DynamicRoutine() {
       setToast('Dynamic routine cleared.');
       fetchRoutines();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to clear');
+      setError(err.friendlyMessage || err.response?.data?.message || 'Failed to clear');
     }
   }
 
@@ -292,6 +307,22 @@ export default function DynamicRoutine() {
           <h3 className="font-semibold mb-2 text-slate-700 text-sm uppercase tracking-wide">Resulting Routine</h3>
           <RoutineGrid routines={routines} onDelete={handleDelete} currentUser={user} />
         </div>
+
+        {sheetBatchOptions.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+              <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">Printable Weekly Sheet</h3>
+              <select
+                value={sheetBatch}
+                onChange={(e) => setSheetBatch(e.target.value)}
+                className="border border-slate-200 bg-slate-50/60 p-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+              >
+                {sheetBatchOptions.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+            <WeeklySheet batch={sheetBatch} routines={routines} />
+          </div>
+        )}
       </div>
     </div>
   );

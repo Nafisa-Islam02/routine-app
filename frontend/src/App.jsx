@@ -7,6 +7,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import TeacherEditor from './pages/TeacherEditor';
 import DynamicRoutine from './pages/DynamicRoutine';
+import SeriesRoutine from './pages/SeriesRoutine';
 
 export default function App() {
   return (
@@ -37,6 +38,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={['admin', 'teacher']}>
               <DynamicRoutine />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/routine-sheet/:batch"
+          element={
+            <ProtectedRoute>
+              <SeriesRoutine />
             </ProtectedRoute>
           }
         />

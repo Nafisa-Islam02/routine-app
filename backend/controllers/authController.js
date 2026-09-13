@@ -35,9 +35,12 @@ exports.register = async (req, res) => {
     // 4. Hash the password
     const hashed = await bcrypt.hash(password, 10);
 
-    // 5. Normalize role (handles "Teacher", "TEACHER", or "teacher")
+    // 5. Normalize role (handles "Teacher", "TEACHER", or "teacher").
+    // Bug fix: this used to collapse every "teacher" signup into "admin"
+    // and everything else into "student", so it was impossible to ever
+    // register an account with the "teacher" role at all.
     const normalizedRole = role ? role.toLowerCase().trim() : 'student';
-    const safeRole = normalizedRole === 'teacher' ? 'admin' : 'student';
+    const safeRole = ['admin', 'teacher', 'student'].includes(normalizedRole) ? normalizedRole : 'student';
 
     // 6. Create user in database
     const user = await User.create({

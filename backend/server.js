@@ -43,6 +43,29 @@ app.use('/api/routines', routineRoutes);
 app.use('/api/dynamic-routines', dynamicRoutineRoutes);
 app.use('/api/notifications', notificationRoutes);
 
+// Anything that doesn't match a route above -> JSON 404 instead of Express's
+// default plain-text "Cannot GET/POST ..." page. Without this, a typo'd
+// VITE_API_URL or a route mismatch returns non-JSON, and the frontend's
+// `err.response?.data?.message` lookup silently comes back undefined —
+// which is exactly what produces a generic "Something went wrong" toast
+// with no useful information in it.
+app.use((req, res) => {
+  res.status(404).json({ message: `No route matches ${req.method} ${req.originalUrl}` });
+});
+
+// Catch-all error handler. Must be defined last, with 4 arguments, for
+// Express to treat it as an error handler. Guarantees every error (a bad
+// JSON body from express.json(), a thrown error anywhere, etc.) comes back
+// as JSON with a message instead of Express's default HTML error page —
+// again, so the real error reaches the UI instead of being swallowed into
+// a generic fallback message.
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  if (res.headersSent) return next(err);
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({ message: err.message || 'Unexpected server error' });
+});
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
   socket.on('disconnect', () => console.log('Client disconnected:', socket.id));
