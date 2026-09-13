@@ -1,6 +1,7 @@
+
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { DAYS, BLOCKS, PERIODS } from '../schedule';
-import { COLOR_CLASSES } from '../constants/colors';
+import { COLOR_CLASSES } from '../context/colors';
 
 const BLOCK_KEYS = ['A', 'B', 'C'];
 
@@ -113,10 +114,12 @@ export default function RoutineGrid({ routines, onEdit, onDelete, currentUser })
       (r) => r.batch === batch && r.day === day && r.type === 'class' && Number(r.period) === periodId
     );
   }
+
   // Returns an array (0, 1, or 2 — a pair of labs sharing the same slot).
   function findLabs(batch, day, blockKey) {
     return routines.filter((r) => r.batch === batch && r.day === day && r.type === 'lab' && r.block === blockKey);
   }
+
   function canManage(slot) {
     if (!currentUser) return false;
     if (currentUser.role === 'admin') return true;
@@ -257,6 +260,7 @@ function PairedLabCell({ slots, span, onEdit, onDelete, canManage }) {
   if (slots.length === 1) {
     return <SlotCell slot={slots[0]} span={span} onEdit={onEdit} onDelete={onDelete} canManage={canManage(slots[0])} />;
   }
+
   return (
     <div className="border-r flex min-h-[58px]" style={{ gridColumn: `span ${span}` }}>
       {slots.map((slot, i) => {
