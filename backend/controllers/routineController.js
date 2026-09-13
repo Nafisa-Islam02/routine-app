@@ -1,8 +1,8 @@
 const Routine = require('../models/Routine');
 const ChangeLog = require('../models/ChangeLog');
+const Notification = require('../models/Notification');
 const { findConflict } = require('../utils/conflictCheck');
-const { resolveSlotTimes, DAYS, PERIODS } = require('../utils/schedule');
-const { timesOverlap } = require('../utils/conflictCheck');
+const { resolveSlotTimes, DAYS } = require('../utils/schedule');
 
 function conflictMessage(conflict) {
   return `Conflict with existing slot: ${conflict.courseCode} (${conflict.startTime}-${conflict.endTime}, Room ${conflict.room}, ${conflict.teacher})`;
@@ -83,6 +83,15 @@ exports.createRoutine = async (req, res) => {
       newValue: routine.toObject(),
     });
 
+    const note = await Notification.create({
+      message: `${courseCode} added to ${batch} (${day}) by ${req.user.role}.`,
+      source: 'routine',
+      actionType: 'created',
+      actor: req.user.userId,
+      department,
+    });
+    const populatedNote = await note.populate('actor', 'name role');
+    req.io.emit('notification', populatedNote);
     req.io.emit('routineUpdated', { department, batch, type: 'created', routine });
     res.status(201).json(routine);
   } catch (err) {
@@ -140,6 +149,15 @@ exports.updateRoutine = async (req, res) => {
       newValue: existing.toObject(),
     });
 
+    const note = await Notification.create({
+      message: `${existing.courseCode} updated on ${existing.batch} (${existing.day}) by ${req.user.role}.`,
+      source: 'routine',
+      actionType: 'updated',
+      actor: req.user.userId,
+      department: existing.department,
+    });
+    const populatedNote = await note.populate('actor', 'name role');
+    req.io.emit('notification', populatedNote);
     req.io.emit('routineUpdated', {
       department: existing.department,
       batch: existing.batch,
@@ -173,6 +191,15 @@ exports.deleteRoutine = async (req, res) => {
       oldValue: existing.toObject(),
     });
 
+    const note = await Notification.create({
+      message: `${existing.courseCode} removed from ${existing.batch} (${existing.day}) by ${req.user.role}.`,
+      source: 'routine',
+      actionType: 'deleted',
+      actor: req.user.userId,
+      department: existing.department,
+    });
+    const populatedNote = await note.populate('actor', 'name role');
+    req.io.emit('notification', populatedNote);
     req.io.emit('routineUpdated', {
       department: existing.department,
       batch: existing.batch,
@@ -198,144 +225,3 @@ exports.getHistory = async (req, res) => {
   }
 };
 
-
-// ── Dynamic Routine (auto-scheduler) ────────────────────────────────────────
-// Lets a teacher/admin submit just the class details (course, teacher, room,
-// batch, type, which day(s)) with NO time slot chosen. The algorithm below
-// picks the earliest valid period/block for each day, obeying three rules:
-//   1. No double-booking of the same teacher, room, or batch (reuses the same
-//      timesOverlap check as the manual conflict checker).
-//   2. Only the real class periods / lab blocks from schedule.js are ever
-//      used, so the 10:30-10:50 break and 1:20-2:30 lunch gap are impossible.
-//   3. A teacher is never given 3 back-to-back 50-minute classes in a row
-//      (labs are a single continuous session so they don't count toward this).
-
-// Returns true if adding `candidatePeriodId` to a teacher's existing class
-// periods for that day would create a run of 3+ consecutive periods.
-function wouldCreateThreeInARow(existingPeriodIds, candidatePeriodId) {
-  const ids = [...existingPeriodIds, candidatePeriodId].sort((a, b) => a - b);
-  let run = 1;
-  for (let i = 1; i < ids.length; i++) {
-    if (ids[i] === ids[i - 1] + 1) {
-      run += 1;
-      if (run >= 3) return true;
-    } else {
-      run = 1;
-    }
-  }
-  return false;
-}
-
-// POST /api/routines/dynamic
-// body: { classes: [ { department, batch, section, teacher, room, courseCode,
-//                       courseTitle, type: 'class'|'lab', color, days: ['Saturday', ...] } ] }
-exports.generateDynamicRoutine = async (req, res) => {
-  try {
-    const { classes } = req.body;
-    if (!Array.isArray(classes) || classes.length === 0) {
-      return res.status(400).json({ message: 'Provide at least one class in "classes".' });
-    }
-
-    for (const spec of classes) {
-      const { department, batch, teacher, room, courseCode, type, days } = spec;
-      if (!department || !batch || !teacher || !room || !courseCode) {
-        return res.status(400).json({ message: 'Each class needs department, batch, teacher, room and courseCode.' });
-      }
-      if (!['class', 'lab'].includes(type)) {
-        return res.status(400).json({ message: `Invalid type for ${courseCode}. Must be "class" or "lab".` });
-      }
-      if (!Array.isArray(days) || days.length === 0 || !days.every((d) => DAYS.includes(d))) {
-        return res.status(400).json({ message: `Pick at least one valid day for ${courseCode}.` });
-      }
-    }
-
-    const created = [];
-    const skipped = [];
-
-    // Pull every existing routine for the involved department(s), grouped by day,
-    // then keep updating this in-memory copy as we schedule new slots — so slot 2
-    // of a multi-class request already "sees" slot 1 that was just placed.
-    const departments = [...new Set(classes.map((c) => c.department))];
-    const dayBuckets = {};
-    for (const day of DAYS) {
-      dayBuckets[day] = await Routine.find({ day, department: { $in: departments } }).lean();
-    }
-
-    function slotConflicts(day, startTime, endTime, teacher, room, batch) {
-      return dayBuckets[day].some(
-        (r) =>
-          (r.teacher === teacher || r.room === room || r.batch === batch) &&
-          timesOverlap(startTime, endTime, r.startTime, r.endTime)
-      );
-    }
-
-    function teacherClassPeriodIds(day, teacher) {
-      return dayBuckets[day]
-        .filter((r) => r.teacher === teacher && r.type === 'class')
-        .map((r) => Number(r.period));
-    }
-
-    for (const spec of classes) {
-      const { department, batch, section, teacher, room, courseCode, courseTitle, type, color, days } = spec;
-
-      for (const day of days) {
-        let placed = null;
-
-        if (type === 'lab') {
-          for (const blockKey of ['A', 'B', 'C']) {
-            const times = resolveSlotTimes({ type: 'lab', block: blockKey });
-            if (slotConflicts(day, times.startTime, times.endTime, teacher, room, batch)) continue;
-            placed = { block: blockKey, ...times };
-            break;
-          }
-        } else {
-          for (const p of PERIODS) {
-            const times = resolveSlotTimes({ type: 'class', period: p.id });
-            if (slotConflicts(day, times.startTime, times.endTime, teacher, room, batch)) continue;
-            const existingIds = teacherClassPeriodIds(day, teacher);
-            if (wouldCreateThreeInARow(existingIds, p.id)) continue;
-            placed = { period: p.id, ...times };
-            break;
-          }
-        }
-
-        if (!placed) {
-          skipped.push({
-            courseCode, day, teacher, room, batch,
-            reason: 'No free slot that day without a room/teacher/batch conflict, or it would give this teacher 3 classes in a row.',
-          });
-          continue;
-        }
-
-        const routine = await Routine.create({
-          department, batch, section, day, type,
-          period: type === 'class' ? placed.period : undefined,
-          block: type === 'lab' ? placed.block : undefined,
-          startTime: placed.startTime,
-          endTime: placed.endTime,
-          courseCode, courseTitle, teacher, room,
-          color: color || '',
-          createdBy: req.user.userId,
-        });
-
-        await ChangeLog.create({
-          routineId: routine._id,
-          editedBy: req.user.userId,
-          changeType: 'created',
-          newValue: routine.toObject(),
-        });
-
-        dayBuckets[day].push(routine.toObject());
-        created.push(routine);
-      }
-    }
-
-    if (created.length > 0) {
-      req.io.emit('routineUpdated', { type: 'bulk-created', count: created.length });
-    }
-
-    res.status(201).json({ created, skipped });
-  } catch (err) {
-    res.status(500).json({ message: 'Failed to generate dynamic routine', error: err.message });
-  }
-};
