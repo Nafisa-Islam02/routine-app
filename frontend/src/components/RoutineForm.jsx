@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { PERIODS, BLOCKS, DAYS } from '../schedule';
 import { useAuth } from '../context/AuthContext';
 import courseCatalog from '../data/courseCatalog.json';
-import { TEACHERS } from '../constants/teachers';
-import { roomsFor } from '../constants/rooms';
-import { COLOR_OPTIONS, DEFAULT_COLOR } from '../constants/colors';
+import { TEACHERS } from '../context/teachers';
+import { roomsFor } from '../context/rooms';
+import { COLOR_OPTIONS, DEFAULT_COLOR } from '../context/colors';
 
 const SERIES_OPTIONS = Object.keys(courseCatalog);
 
@@ -138,6 +139,7 @@ export default function RoutineForm({ editingSlot, onSubmit, onCancel, error }) 
           <option value="" disabled>{form.batch ? 'Course code…' : 'Pick a series first'}</option>
           {courses.map((c) => <option key={c.code} value={c.code}>{c.code}</option>)}
         </select>
+
         <select
           name="courseTitle" value={form.courseTitle} onChange={handleCourseTitleChange}
           className="border border-slate-300 p-2 rounded-lg" disabled={!form.batch}
@@ -152,6 +154,7 @@ export default function RoutineForm({ editingSlot, onSubmit, onCancel, error }) 
             <option key={t.initial + t.name} value={t.initial}>{t.name} ({t.initial})</option>
           ))}
         </select>
+
         <select name="room" value={form.room} onChange={handleChange} className="border border-slate-300 p-2 rounded-lg" required>
           <option value="" disabled>Room…</option>
           {rooms.map((r) => <option key={r} value={r}>{r}</option>)}
@@ -166,6 +169,7 @@ export default function RoutineForm({ editingSlot, onSubmit, onCancel, error }) 
         <button type="submit" className="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-800 font-medium transition">
           {editingSlot ? 'Save Changes' : 'Add Slot'}
         </button>
+
         {editingSlot && (
           <button type="button" onClick={onCancel} className="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 transition">
             Cancel
