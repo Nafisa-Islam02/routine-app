@@ -1,22 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PERIODS, BLOCKS, DAYS } from '../schedule';
 import { useAuth } from '../context/AuthContext';
+import courseCatalog from '../data/courseCatalog.json';
+import { TEACHERS } from '../constants/teachers';
+import { roomsFor } from '../constants/rooms';
+import { COLOR_OPTIONS, DEFAULT_COLOR } from '../constants/colors';
+
+const SERIES_OPTIONS = Object.keys(courseCatalog);
 
 const emptyForm = {
   department: '', batch: '', section: '', day: 'Saturday',
   type: 'class', period: 1, block: 'A',
-  courseCode: '', courseTitle: '', teacher: '', room: '', color: '',
+  courseCode: '', courseTitle: '', teacher: '', room: '', color: DEFAULT_COLOR,
 };
-
-const COLOR_OPTIONS = [
-  { value: '', label: 'None (white)' },
-  { value: 'yellow', label: 'Yellow — sessional/elective' },
-  { value: 'cyan', label: 'Cyan — lab session' },
-  { value: 'blue', label: 'Blue — sessional (HBK)' },
-  { value: 'gray', label: 'Gray — theory highlight' },
-  { value: 'orange', label: 'Orange — project course' },
-  { value: 'neutral', label: 'Neutral — admin/non-class block' },
-];
 
 // editingSlot: pass an existing routine object to pre-fill for editing, or null for "create new"
 export default function RoutineForm({ editingSlot, onSubmit, onCancel, error }) {
@@ -35,9 +31,44 @@ export default function RoutineForm({ editingSlot, onSubmit, onCancel, error }) 
     }
   }, [editingSlot, user]);
 
+  const courses = useMemo(() => courseCatalog[form.batch] || [], [form.batch]);
+  const rooms = useMemo(() => roomsFor(form.type), [form.type]);
+
   function handleChange(e) {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
+  }
+
+  function handleSeriesChange(e) {
+    // Changing the series invalidates any previously chosen course from a different series.
+    setForm((f) => ({ ...f, batch: e.target.value, courseCode: '', courseTitle: '' }));
+  }
+
+  function handleCourseCodeChange(e) {
+    const code = e.target.value;
+    const match = courses.find((c) => c.code === code);
+    setForm((f) => ({
+      ...f,
+      courseCode: code,
+      courseTitle: match?.title || '',
+      type: match?.type || f.type,
+    }));
+  }
+
+  function handleCourseTitleChange(e) {
+    const title = e.target.value;
+    const match = courses.find((c) => c.title === title);
+    setForm((f) => ({
+      ...f,
+      courseTitle: title,
+      courseCode: match?.code || '',
+      type: match?.type || f.type,
+    }));
+  }
+
+  function handleTypeChange(e) {
+    // Room list depends on type, so reset room when it changes.
+    setForm((f) => ({ ...f, type: e.target.value, room: '' }));
   }
 
   function handleSubmit(e) {
@@ -46,37 +77,44 @@ export default function RoutineForm({ editingSlot, onSubmit, onCancel, error }) 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white shadow rounded p-4 space-y-3 max-w-xl">
-      <h3 className="font-bold text-lg">{editingSlot ? 'Edit Slot' : 'Add Slot'}</h3>
+    <form onSubmit={handleSubmit} className="bg-white shadow-sm border border-slate-200 rounded-2xl p-5 space-y-4 max-w-2xl">
+      <h3 className="font-bold text-lg text-blue-950">{editingSlot ? 'Edit Slot' : 'Add Slot'}</h3>
 
-      {error && <p className="text-red-600 text-sm bg-red-50 border border-red-200 p-2 rounded">{error}</p>}
+      {error && <p className="text-red-600 text-sm bg-red-50 border border-red-200 p-2 rounded-lg">{error}</p>}
 
       <div className="grid grid-cols-2 gap-3">
         <input
           name="department" value={form.department} onChange={handleChange}
-          placeholder="Department (e.g. ECE)" className="border p-2 rounded" required
+          placeholder="Department (e.g. ECE)"
+          className="border border-slate-300 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400"
+          required
         />
         <input
           name="section" value={form.section} onChange={handleChange}
-          placeholder="Section (optional)" className="border p-2 rounded"
-        />
-        <input
-          name="batch" value={form.batch} onChange={handleChange}
-          placeholder='Batch / row label (e.g. "2nd Year Odd Semester 2024 Series")'
-          className="border p-2 rounded col-span-2" required
+          placeholder="Section (optional)"
+          className="border border-slate-300 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400"
         />
 
-        <select name="day" value={form.day} onChange={handleChange} className="border p-2 rounded">
+        <select
+          name="batch" value={form.batch} onChange={handleSeriesChange}
+          className="border border-slate-300 p-2 rounded-lg col-span-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
+          required
+        >
+          <option value="" disabled>Select series…</option>
+          {SERIES_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+
+        <select name="day" value={form.day} onChange={handleChange} className="border border-slate-300 p-2 rounded-lg">
           {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
 
-        <select name="type" value={form.type} onChange={handleChange} className="border p-2 rounded">
+        <select name="type" value={form.type} onChange={handleTypeChange} className="border border-slate-300 p-2 rounded-lg">
           <option value="class">Class (50 min)</option>
           <option value="lab">Lab (2h30m)</option>
         </select>
 
         {form.type === 'class' ? (
-          <select name="period" value={form.period} onChange={handleChange} className="border p-2 rounded col-span-2">
+          <select name="period" value={form.period} onChange={handleChange} className="border border-slate-300 p-2 rounded-lg col-span-2">
             {PERIODS.map((p) => (
               <option key={p.id} value={p.id}>
                 Period {p.id} · {p.start}–{p.end}
@@ -84,7 +122,7 @@ export default function RoutineForm({ editingSlot, onSubmit, onCancel, error }) 
             ))}
           </select>
         ) : (
-          <select name="block" value={form.block} onChange={handleChange} className="border p-2 rounded col-span-2">
+          <select name="block" value={form.block} onChange={handleChange} className="border border-slate-300 p-2 rounded-lg col-span-2">
             {Object.entries(BLOCKS).map(([key, b]) => (
               <option key={key} value={key}>
                 Block {key} · {b.start}–{b.end}
@@ -93,39 +131,43 @@ export default function RoutineForm({ editingSlot, onSubmit, onCancel, error }) 
           </select>
         )}
 
-        <p className="col-span-2 text-xs text-gray-500 -mt-1">
-          Only valid class periods / lab blocks are selectable, so the 10:30–10:50 break and the
-          1:20–2:30 lunch gap can never be booked.
-        </p>
+        <select
+          name="courseCode" value={form.courseCode} onChange={handleCourseCodeChange}
+          className="border border-slate-300 p-2 rounded-lg" required disabled={!form.batch}
+        >
+          <option value="" disabled>{form.batch ? 'Course code…' : 'Pick a series first'}</option>
+          {courses.map((c) => <option key={c.code} value={c.code}>{c.code}</option>)}
+        </select>
+        <select
+          name="courseTitle" value={form.courseTitle} onChange={handleCourseTitleChange}
+          className="border border-slate-300 p-2 rounded-lg" disabled={!form.batch}
+        >
+          <option value="" disabled>{form.batch ? 'Course title…' : 'Pick a series first'}</option>
+          {courses.map((c) => <option key={c.code} value={c.title}>{c.title}</option>)}
+        </select>
 
-        <input
-          name="courseCode" value={form.courseCode} onChange={handleChange}
-          placeholder="Course code (e.g. ECE 2103)" className="border p-2 rounded" required
-        />
-        <input
-          name="courseTitle" value={form.courseTitle} onChange={handleChange}
-          placeholder="Course title (optional)" className="border p-2 rounded"
-        />
-        <input
-          name="teacher" value={form.teacher} onChange={handleChange}
-          placeholder="Teacher (initial or name)" className="border p-2 rounded" required
-        />
-        <input
-          name="room" value={form.room} onChange={handleChange}
-          placeholder="Room / lab (e.g. R-403)" className="border p-2 rounded" required
-        />
+        <select name="teacher" value={form.teacher} onChange={handleChange} className="border border-slate-300 p-2 rounded-lg" required>
+          <option value="" disabled>Teacher…</option>
+          {TEACHERS.map((t) => (
+            <option key={t.initial + t.name} value={t.initial}>{t.name} ({t.initial})</option>
+          ))}
+        </select>
+        <select name="room" value={form.room} onChange={handleChange} className="border border-slate-300 p-2 rounded-lg" required>
+          <option value="" disabled>Room…</option>
+          {rooms.map((r) => <option key={r} value={r}>{r}</option>)}
+        </select>
 
-        <select name="color" value={form.color} onChange={handleChange} className="border p-2 rounded col-span-2">
+        <select name="color" value={form.color} onChange={handleChange} className="border border-slate-300 p-2 rounded-lg col-span-2">
           {COLOR_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
       </div>
 
       <div className="flex gap-2">
-        <button type="submit" className="bg-blue-900 text-white px-4 py-2 rounded hover:bg-blue-800">
+        <button type="submit" className="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-800 font-medium transition">
           {editingSlot ? 'Save Changes' : 'Add Slot'}
         </button>
         {editingSlot && (
-          <button type="button" onClick={onCancel} className="px-4 py-2 rounded border">
+          <button type="button" onClick={onCancel} className="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 transition">
             Cancel
           </button>
         )}

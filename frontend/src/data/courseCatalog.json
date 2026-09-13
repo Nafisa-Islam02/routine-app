@@ -1,0 +1,14 @@
+{
+  "Semester 2-1 (24)": [
+    { "code": "CHEM 2117", "title": "Inorganic and Physical Chemistry", "credit": 3, "type": "class" },
+    { "code": "CHEM 2118", "title": "Inorganic and Physical Chemistry Sessional", "credit": 0.75, "type": "lab" },
+    { "code": "ECE 2100", "title": "Software Development Project-I", "credit": 0.75, "type": "lab" },
+    { "code": "ECE 2103", "title": "Data Structure & Algorithms", "credit": 3, "type": "class" },
+    { "code": "ECE 2104", "title": "Data Structure & Algorithms Sessional", "credit": 1.5, "type": "lab" },
+    { "code": "ECE 2105", "title": "Analog Electronic Circuits-II", "credit": 3, "type": "class" },
+    { "code": "ECE 2106", "title": "Analog Electronic Circuits-II Sessional", "credit": 0.75, "type": "lab" },
+    { "code": "ECE 2111", "title": "Digital Techniques", "credit": 3, "type": "class" },
+    { "code": "ECE 2112", "title": "Digital Techniques Sessional", "credit": 0.75, "type": "lab" },
+    { "code": "MATH 2117", "title": "Vector Analysis & Linear Algebra", "credit": 3, "type": "class" }
+  ]
+}

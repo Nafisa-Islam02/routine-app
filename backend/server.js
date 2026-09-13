@@ -7,6 +7,8 @@ const connectDB = require('./config/db');
 
 const authRoutes = require('./routes/auth');
 const routineRoutes = require('./routes/routine');
+const dynamicRoutineRoutes = require('./routes/dynamicRoutine');
+const notificationRoutes = require('./routes/notification');
 
 const app = express();
 const server = http.createServer(app);
@@ -38,6 +40,8 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => res.send('Routine API running'));
 app.use('/api/auth', authRoutes);
 app.use('/api/routines', routineRoutes);
+app.use('/api/dynamic-routines', dynamicRoutineRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
