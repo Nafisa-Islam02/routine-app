@@ -269,6 +269,7 @@ export default function RoutineGrid({
                             isDragOver={isOver}
                             selectedSlot={selectedSlotForSwap}
                             onCellClick={handleCellClick}
+                            readOnly={readOnly}
                           />
                         ) : (
                           BLOCKS[blockKey].periods.map((pid) => {
@@ -292,6 +293,7 @@ export default function RoutineGrid({
                                 isDragOver={isPOver}
                                 isSelected={selectedSlotForSwap?._id === cls?._id}
                                 onCellClick={handleCellClick}
+                                readOnly={readOnly}
                               />
                             );
                           })

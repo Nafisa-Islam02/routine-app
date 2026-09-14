@@ -370,28 +370,6 @@ export default function DynamicRoutine() {
           </div>
         )}
 
-        {/* Unified Dynamic Routine Grid with Drag & Drop */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <h3 className="font-extrabold text-slate-800 text-base uppercase tracking-wide flex items-center gap-2">
-              <span>⚡ Resulting Weekly {selectedSeries} Series Routine</span>
-            </h3>
-            <span className="text-xs text-slate-500 font-medium italic bg-slate-100 px-3 py-1 rounded-full">
-              💡 Drag &amp; drop to switch slots &middot; Click empty cells to add class
-            </span>
-          </div>
-
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
-            <RoutineGrid
-              routines={seriesRoutines}
-              onDelete={handleDelete}
-              onSwap={handleSwap}
-              onEmptyCellClick={handleEmptyCellClick}
-              currentUser={user}
-            />
-          </div>
-        </div>
-
         {/* Printable Sheet View */}
         <div className="space-y-2 pt-4">
           <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wide">
