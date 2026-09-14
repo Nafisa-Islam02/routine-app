@@ -93,11 +93,19 @@ function useNowLine(gridRef) {
   return pos;
 }
 
-export default function RoutineGrid({ routines, onEdit, onDelete, onSwap, currentUser }) {
+export default function RoutineGrid({
+  routines,
+  onEdit,
+  onDelete,
+  onSwap,
+  onEmptyCellClick,
+  currentUser,
+  readOnly = false,
+}) {
   const gridRef = useRef(null);
   const nowLine = useNowLine(gridRef);
   const [selectedSlotForSwap, setSelectedSlotForSwap] = useState(null);
-  const [dragOverCell, setDragOverCell] = useState(null); // 'day-period' or 'day-block'
+  const [dragOverCell, setDragOverCell] = useState(null);
 
   const batches = useMemo(() => {
     const set = new Set(routines.map((r) => r.batch));
@@ -115,19 +123,20 @@ export default function RoutineGrid({ routines, onEdit, onDelete, onSwap, curren
   }
 
   function canManage(slot) {
-    if (!currentUser) return false;
+    if (readOnly || !currentUser) return false;
     if (currentUser.role === 'admin') return true;
     return currentUser.role === 'teacher' && String(slot.createdBy) === String(currentUser.id);
   }
 
   // Handle Drag & Drop Events
   function handleDragStart(e, slot) {
-    if (!slot) return;
+    if (readOnly || !slot) return;
     e.dataTransfer.setData('text/plain', JSON.stringify({ slotId: slot._id, day: slot.day, type: slot.type }));
     e.dataTransfer.effectAllowed = 'move';
   }
 
   function handleDragOver(e, cellKey) {
+    if (readOnly) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     if (dragOverCell !== cellKey) setDragOverCell(cellKey);
@@ -138,6 +147,7 @@ export default function RoutineGrid({ routines, onEdit, onDelete, onSwap, curren
   }
 
   function handleDrop(e, targetDay, targetPeriod, targetBlock) {
+    if (readOnly) return;
     e.preventDefault();
     setDragOverCell(null);
     const dataStr = e.dataTransfer.getData('text/plain');
@@ -150,8 +160,14 @@ export default function RoutineGrid({ routines, onEdit, onDelete, onSwap, curren
     }
   }
 
-  // Touch/Tap-to-Swap fallback for mobile devices
-  function handleCellClick(slot, targetDay, targetPeriod, targetBlock) {
+  function handleCellClick(slot, targetDay, targetPeriod, targetBlock, batch) {
+    if (readOnly) return;
+    if (!slot) {
+      if (onEmptyCellClick) {
+        onEmptyCellClick(targetDay, targetPeriod, targetBlock, batch);
+      }
+      return;
+    }
     if (!onSwap) return;
     if (!selectedSlotForSwap) {
       if (slot && canManage(slot)) {
@@ -159,7 +175,7 @@ export default function RoutineGrid({ routines, onEdit, onDelete, onSwap, curren
       }
     } else {
       if (selectedSlotForSwap._id === slot?._id) {
-        setSelectedSlotForSwap(null); // Deselect
+        setSelectedSlotForSwap(null);
       } else {
         onSwap(selectedSlotForSwap._id, targetDay, targetPeriod, targetBlock);
         setSelectedSlotForSwap(null);
@@ -313,21 +329,23 @@ function GapHeader({ gapId, day }) {
 }
 
 function SlotCell({
-  slot, span, day, periodId, onEdit, onDelete, canManage,
-  onDragStart, onDragOver, onDragLeave, onDrop, isDragOver, isSelected, onCellClick
+  slot, span, day, periodId, batch, onEdit, onDelete, canManage,
+  onDragStart, onDragOver, onDragLeave, onDrop, isDragOver, isSelected, onCellClick, readOnly
 }) {
   const colorClass = COLOR_CLASSES[slot?.color ?? ''] ?? COLOR_CLASSES[''];
 
   return (
     <div
-      draggable={Boolean(slot && canManage)}
-      onDragStart={(e) => onDragStart && onDragStart(e, slot)}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      onClick={() => onCellClick && onCellClick(slot, day, periodId, undefined)}
-      className={`border-r p-1.5 min-h-[64px] flex flex-col justify-center items-center text-center transition-all relative group cursor-pointer ${
-        slot ? colorClass : 'bg-white hover:bg-sky-50/50'
+      draggable={Boolean(!readOnly && slot && canManage)}
+      onDragStart={(e) => !readOnly && onDragStart && onDragStart(e, slot)}
+      onDragOver={!readOnly ? onDragOver : undefined}
+      onDragLeave={!readOnly ? onDragLeave : undefined}
+      onDrop={!readOnly ? onDrop : undefined}
+      onClick={() => !readOnly && onCellClick && onCellClick(slot, day, periodId, undefined, batch)}
+      className={`border-r p-1.5 min-h-[64px] flex flex-col justify-center items-center text-center transition-all relative group ${
+        slot ? colorClass : 'bg-white'
+      } ${!readOnly && !slot ? 'hover:bg-sky-50/50 cursor-pointer' : ''} ${
+        !readOnly && slot && canManage ? 'cursor-grab active:cursor-grabbing' : ''
       } ${isDragOver ? 'drag-over-slot' : ''} ${isSelected ? 'ring-2 ring-sky-500 ring-offset-1 z-10' : ''}`}
       style={{ gridColumn: `span ${span}` }}
     >
@@ -356,7 +374,7 @@ function SlotCell({
           <div className="text-[10px] font-medium leading-tight opacity-90">{slot.teacher}</div>
           <div className="text-[10px] leading-tight font-semibold opacity-75">{slot.room}</div>
 
-          {canManage && (onEdit || onDelete) && (
+          {!readOnly && canManage && (onEdit || onDelete) && (
             <div className="mt-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               {onEdit && (
                 <button
@@ -380,7 +398,7 @@ function SlotCell({
           )}
         </>
       ) : (
-        <span className="text-[10px] text-slate-300 group-hover:text-slate-400 font-medium">+</span>
+        !readOnly && <span className="text-[10px] text-slate-300 group-hover:text-sky-500 font-bold" title="Click to add class">+</span>
       )}
     </div>
   );
@@ -388,8 +406,8 @@ function SlotCell({
 
 // Renders one or two simultaneous labs sharing the same 2h30m block.
 function PairedLabCell({
-  slots, span, day, blockKey, onEdit, onDelete, canManage,
-  onDragStart, onDragOver, onDragLeave, onDrop, isDragOver, selectedSlot, onCellClick
+  slots, span, day, blockKey, batch, onEdit, onDelete, canManage,
+  onDragStart, onDragOver, onDragLeave, onDrop, isDragOver, selectedSlot, onCellClick, readOnly
 }) {
   if (slots.length === 1) {
     return (
@@ -397,6 +415,7 @@ function PairedLabCell({
         slot={slots[0]}
         span={span}
         day={day}
+        batch={batch}
         onEdit={onEdit}
         onDelete={onDelete}
         canManage={canManage(slots[0])}
@@ -407,24 +426,23 @@ function PairedLabCell({
         isDragOver={isDragOver}
         isSelected={selectedSlot?._id === slots[0]._id}
         onCellClick={onCellClick}
+        readOnly={readOnly}
       />
     );
   }
 
-  // Combined title representation e.g. "Analog (1st 30) / Digital (2nd 30)"
   const titleSummary = slots.map((s) => `${s.courseCode}${s.labGroup ? ` (${s.labGroup})` : ''}`).join(' / ');
 
   return (
     <div
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
+      onDragOver={!readOnly ? onDragOver : undefined}
+      onDragLeave={!readOnly ? onDragLeave : undefined}
+      onDrop={!readOnly ? onDrop : undefined}
       className={`border-r flex min-h-[64px] relative rounded-lg overflow-hidden border border-slate-200 shadow-inner ${
         isDragOver ? 'drag-over-slot' : ''
       }`}
       style={{ gridColumn: `span ${span}` }}
     >
-      {/* Simultaneous lab header banner */}
       <div className="absolute top-0 left-0 right-0 bg-blue-950/80 text-white text-[8px] font-bold text-center py-0.5 z-10 truncate px-1">
         Simultaneous: {titleSummary}
       </div>
@@ -436,12 +454,12 @@ function PairedLabCell({
         return (
           <div
             key={slot._id || i}
-            draggable={canManage(slot)}
-            onDragStart={(e) => onDragStart && onDragStart(e, slot)}
-            onClick={() => onCellClick && onCellClick(slot, day, undefined, blockKey)}
-            className={`flex-1 p-1.5 pt-4 flex flex-col justify-center items-center text-center cursor-pointer transition-all relative group ${colorClass} ${
-              i === 0 ? 'border-r border-white/50' : ''
-            } ${isSel ? 'ring-2 ring-sky-500 z-10' : ''}`}
+            draggable={Boolean(!readOnly && canManage(slot))}
+            onDragStart={(e) => !readOnly && onDragStart && onDragStart(e, slot)}
+            onClick={() => !readOnly && onCellClick && onCellClick(slot, day, undefined, blockKey, batch)}
+            className={`flex-1 p-1.5 pt-4 flex flex-col justify-center items-center text-center transition-all relative group ${colorClass} ${
+              !readOnly && canManage(slot) ? 'cursor-grab active:cursor-grabbing' : ''
+            } ${i === 0 ? 'border-r border-white/50' : ''} ${isSel ? 'ring-2 ring-sky-500 z-10' : ''}`}
           >
             <div className="flex items-center gap-0.5 flex-wrap justify-center mb-0.5">
               {slot.labGroup && (
@@ -457,7 +475,7 @@ function PairedLabCell({
             <div className="text-[10px] font-medium leading-tight opacity-90">{slot.teacher}</div>
             <div className="text-[10px] leading-tight font-semibold opacity-75">{slot.room}</div>
 
-            {canManage(slot) && (onEdit || onDelete) && (
+            {!readOnly && canManage(slot) && (onEdit || onDelete) && (
               <div className="mt-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {onEdit && (
                   <button

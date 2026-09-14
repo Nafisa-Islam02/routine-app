@@ -256,6 +256,17 @@ export default function DynamicRoutine() {
     }
   }
 
+  const handleEmptyCellClick = (day, period, block) => {
+    setRows((prev) => {
+      if (prev.length === 0) return [emptyRow(user, selectedSeries)];
+      const updated = [...prev];
+      updated[0] = { ...updated[0], days: [day] };
+      return updated;
+    });
+    setToast(`Pre-selected ${day} (${block ? 'Block ' + block : 'Period ' + period}) in the class generator form above.`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white">
       <Notification message={toast} onClose={() => setToast('')} />
@@ -359,15 +370,14 @@ export default function DynamicRoutine() {
           </div>
         )}
 
-        {/* Dynamic Routine Result Grid with Drag and Drop */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
+        {/* Unified Dynamic Routine Grid with Drag & Drop */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h3 className="font-extrabold text-slate-800 text-base uppercase tracking-wide flex items-center gap-2">
-              <span>⚡ Resulting Series Routine:</span>
-              <span className="text-sky-700 font-bold">{selectedSeries}</span>
+              <span>⚡ Resulting Weekly {selectedSeries} Series Routine</span>
             </h3>
-            <span className="text-xs text-slate-400 font-medium italic">
-              💡 Tip: Drag and drop classes in the grid below to switch their slots
+            <span className="text-xs text-slate-500 font-medium italic bg-slate-100 px-3 py-1 rounded-full">
+              💡 Drag &amp; drop to switch slots &middot; Click empty cells to add class
             </span>
           </div>
 
@@ -376,15 +386,16 @@ export default function DynamicRoutine() {
               routines={seriesRoutines}
               onDelete={handleDelete}
               onSwap={handleSwap}
+              onEmptyCellClick={handleEmptyCellClick}
               currentUser={user}
             />
           </div>
         </div>
 
-        {/* Weekly Printable Sheet */}
-        <div>
-          <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wide mb-2">
-            Printable Weekly Sheet ({selectedSeries})
+        {/* Printable Sheet View */}
+        <div className="space-y-2 pt-4">
+          <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wide">
+            Printable Sheet ({selectedSeries})
           </h3>
           <WeeklySheet batch={selectedSeries} routines={seriesRoutines} />
         </div>

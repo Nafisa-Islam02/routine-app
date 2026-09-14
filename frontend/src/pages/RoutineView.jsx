@@ -186,11 +186,22 @@ export default function RoutineView() {
       </div>
 
       {/* Routine Grid Surface */}
-      <div className="bg-white rounded-2xl p-4 shadow-md border border-slate-200">
+      <div className="bg-white rounded-2xl p-4 shadow-md border border-slate-200 space-y-3">
+        {selectedBatch !== 'All' && (
+          <div className="flex items-center justify-between border-b pb-2">
+            <h3 className="font-extrabold text-blue-950 text-base uppercase tracking-tight">
+              Resulting Weekly {selectedBatch} Routine
+            </h3>
+            <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+              Read-Only View
+            </span>
+          </div>
+        )}
+
         {loading ? (
           <div className="p-8 text-center text-slate-400 text-sm italic">Loading routine matrix…</div>
         ) : (
-          <RoutineGrid routines={combinedRoutines} />
+          <RoutineGrid routines={combinedRoutines} readOnly={true} />
         )}
       </div>
 
