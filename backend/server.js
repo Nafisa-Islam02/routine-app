@@ -37,18 +37,27 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/', (req, res) => res.send('Routine API running'));
+const path = require('path');
+
+app.get('/api-status', (req, res) => res.send('Routine API running'));
 app.use('/api/auth', authRoutes);
 app.use('/api/routines', routineRoutes);
 app.use('/api/dynamic-routines', dynamicRoutineRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// Anything that doesn't match a route above -> JSON 404 instead of Express's
-// default plain-text "Cannot GET/POST ..." page. Without this, a typo'd
-// VITE_API_URL or a route mismatch returns non-JSON, and the frontend's
-// `err.response?.data?.message` lookup silently comes back undefined —
-// which is exactly what produces a generic "Something went wrong" toast
-// with no useful information in it.
+const distPath = path.join(__dirname, '../frontend/dist');
+const fs = require('fs');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get('*', (req, res, next) => {
+    if (!req.path.startsWith('/api') && req.accepts('html')) {
+      return res.sendFile(path.join(distPath, 'index.html'));
+    }
+    next();
+  });
+}
+
+// Anything that doesn't match a route above -> JSON 404
 app.use((req, res) => {
   res.status(404).json({ message: `No route matches ${req.method} ${req.originalUrl}` });
 });

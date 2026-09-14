@@ -83,9 +83,14 @@ function SlotCell({ slot }) {
     <div className={`border-r border-t p-1 min-h-[54px] flex flex-col justify-center items-center text-center ${slot ? colorClass : 'bg-white'}`}>
       {slot && (
         <>
+          <div className="flex items-center gap-0.5 justify-center mb-0.5">
+            {slot.isCT && <span className="bg-amber-500 text-white font-extrabold text-[8px] px-1 rounded">CT</span>}
+            {slot.isQuiz && <span className="bg-purple-600 text-white font-extrabold text-[8px] px-1 rounded">Quiz</span>}
+            {slot.labGroup && <span className="bg-sky-600 text-white font-bold text-[8px] px-1 rounded">{slot.labGroup}</span>}
+          </div>
           <div className="font-semibold leading-tight">{slot.courseCode}</div>
-          <div className="leading-tight">{slot.teacher}</div>
-          <div className="leading-tight opacity-80">{slot.room}</div>
+          <div className="leading-tight text-[10px]">{slot.teacher}</div>
+          <div className="leading-tight text-[10px] opacity-80">{slot.room}</div>
         </>
       )}
     </div>
@@ -93,18 +98,30 @@ function SlotCell({ slot }) {
 }
 
 function LabCell({ slots }) {
+  const summary = slots.map((s) => `${s.courseCode}${s.labGroup ? ` (${s.labGroup})` : ''}`).join(' / ');
+
   return (
-    <div className="border-r border-t flex min-h-[54px]" style={{ gridColumn: 'span 3' }}>
+    <div className="border-r border-t flex min-h-[54px] relative" style={{ gridColumn: 'span 3' }}>
+      {slots.length > 1 && (
+        <div className="absolute top-0 left-0 right-0 bg-blue-950/80 text-white text-[7px] font-bold text-center py-0.2 z-10 truncate px-1">
+          {summary}
+        </div>
+      )}
       {slots.map((slot, i) => {
         const colorClass = COLOR_CLASSES[slot?.color ?? ''] ?? COLOR_CLASSES[''];
         return (
           <div
             key={slot._id || i}
-            className={`flex-1 p-1 flex flex-col justify-center items-center text-center ${colorClass} ${i === 0 ? 'border-r border-white/50' : ''}`}
+            className={`flex-1 p-1 ${slots.length > 1 ? 'pt-3' : ''} flex flex-col justify-center items-center text-center ${colorClass} ${i === 0 && slots.length > 1 ? 'border-r border-white/50' : ''}`}
           >
+            <div className="flex items-center gap-0.5 justify-center mb-0.5">
+              {slot.labGroup && <span className="bg-blue-950 text-white font-bold text-[8px] px-1 rounded">{slot.labGroup}</span>}
+              {slot.isCT && <span className="bg-amber-500 text-white text-[8px] font-bold px-1 rounded">CT</span>}
+              {slot.isQuiz && <span className="bg-purple-600 text-white text-[8px] font-bold px-1 rounded">Quiz</span>}
+            </div>
             <div className="font-semibold leading-tight">{slot.courseCode}</div>
-            <div className="leading-tight">{slot.teacher}</div>
-            <div className="leading-tight opacity-80">{slot.room}</div>
+            <div className="leading-tight text-[10px]">{slot.teacher}</div>
+            <div className="leading-tight text-[10px] opacity-80">{slot.room}</div>
           </div>
         );
       })}

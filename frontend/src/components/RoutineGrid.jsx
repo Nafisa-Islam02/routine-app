@@ -5,7 +5,6 @@ import { COLOR_CLASSES } from '../context/colors';
 
 const BLOCK_KEYS = ['A', 'B', 'C'];
 
-// The canonical order the original sheet uses for the batch rows.
 const BATCH_ORDER = [
   '1st Year Odd Semester 2025 Series',
   '2nd Year Odd Semester 2024 Series',
@@ -26,9 +25,8 @@ function sortBatches(batches) {
   });
 }
 
-const DAY_COLUMNS = `repeat(3, minmax(78px,1fr)) 16px repeat(3, minmax(78px,1fr)) 16px repeat(3, minmax(78px,1fr))`;
+const DAY_COLUMNS = `repeat(3, minmax(85px,1fr)) 16px repeat(3, minmax(85px,1fr)) 16px repeat(3, minmax(85px,1fr))`;
 
-// Maps JS Date#getDay() (0=Sun..6=Sat) to our 5-day school week.
 const JS_DAY_TO_NAME = { 6: 'Saturday', 0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday' };
 
 function toMinutes(hhmm) {
@@ -36,16 +34,13 @@ function toMinutes(hhmm) {
   return h * 60 + m;
 }
 
-// The two real gaps in the day: the 10:30-10:50 break and the 1:20-2:30 lunch gap.
 const GAPS = [
   { id: 1, start: toMinutes(PERIODS[2].end), end: toMinutes(PERIODS[3].start) },
   { id: 2, start: toMinutes(PERIODS[5].end), end: toMinutes(PERIODS[6].start) },
 ];
 
-// Hook: recomputes the pixel position of the "now" line inside `gridRef`
-// every 30 seconds, by locating the live period/gap cell for today.
 function useNowLine(gridRef) {
-  const [pos, setPos] = useState(null); // { left, top, height } or null
+  const [pos, setPos] = useState(null);
 
   useEffect(() => {
     function update() {
@@ -54,7 +49,7 @@ function useNowLine(gridRef) {
 
       const now = new Date();
       const today = JS_DAY_TO_NAME[now.getDay()];
-      if (!today) return setPos(null); // weekend — no classes, no line
+      if (!today) return setPos(null);
 
       const mins = now.getHours() * 60 + now.getMinutes();
       let selector = null;
@@ -72,7 +67,7 @@ function useNowLine(gridRef) {
         }
       }
 
-      if (!selector) return setPos(null); // before 8:00 or after 5:00 — no line
+      if (!selector) return setPos(null);
 
       const cell = grid.querySelector(selector);
       if (!cell) return setPos(null);
@@ -98,11 +93,11 @@ function useNowLine(gridRef) {
   return pos;
 }
 
-// routines: array of routine objects from the API
-// onEdit/onDelete + currentUser: optional — only passed by pages that allow editing
-export default function RoutineGrid({ routines, onEdit, onDelete, currentUser }) {
+export default function RoutineGrid({ routines, onEdit, onDelete, onSwap, currentUser }) {
   const gridRef = useRef(null);
   const nowLine = useNowLine(gridRef);
+  const [selectedSlotForSwap, setSelectedSlotForSwap] = useState(null);
+  const [dragOverCell, setDragOverCell] = useState(null); // 'day-period' or 'day-block'
 
   const batches = useMemo(() => {
     const set = new Set(routines.map((r) => r.batch));
@@ -115,7 +110,6 @@ export default function RoutineGrid({ routines, onEdit, onDelete, currentUser })
     );
   }
 
-  // Returns an array (0, 1, or 2 — a pair of labs sharing the same slot).
   function findLabs(batch, day, blockKey) {
     return routines.filter((r) => r.batch === batch && r.day === day && r.type === 'lab' && r.block === blockKey);
   }
@@ -126,84 +120,175 @@ export default function RoutineGrid({ routines, onEdit, onDelete, currentUser })
     return currentUser.role === 'teacher' && String(slot.createdBy) === String(currentUser.id);
   }
 
+  // Handle Drag & Drop Events
+  function handleDragStart(e, slot) {
+    if (!slot) return;
+    e.dataTransfer.setData('text/plain', JSON.stringify({ slotId: slot._id, day: slot.day, type: slot.type }));
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleDragOver(e, cellKey) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverCell !== cellKey) setDragOverCell(cellKey);
+  }
+
+  function handleDragLeave() {
+    setDragOverCell(null);
+  }
+
+  function handleDrop(e, targetDay, targetPeriod, targetBlock) {
+    e.preventDefault();
+    setDragOverCell(null);
+    const dataStr = e.dataTransfer.getData('text/plain');
+    if (!dataStr || !onSwap) return;
+    try {
+      const data = JSON.parse(dataStr);
+      onSwap(data.slotId, targetDay, targetPeriod, targetBlock);
+    } catch {
+      // quiet fallback
+    }
+  }
+
+  // Touch/Tap-to-Swap fallback for mobile devices
+  function handleCellClick(slot, targetDay, targetPeriod, targetBlock) {
+    if (!onSwap) return;
+    if (!selectedSlotForSwap) {
+      if (slot && canManage(slot)) {
+        setSelectedSlotForSwap(slot);
+      }
+    } else {
+      if (selectedSlotForSwap._id === slot?._id) {
+        setSelectedSlotForSwap(null); // Deselect
+      } else {
+        onSwap(selectedSlotForSwap._id, targetDay, targetPeriod, targetBlock);
+        setSelectedSlotForSwap(null);
+      }
+    }
+  }
+
   if (batches.length === 0) {
-    return <p className="text-gray-500 italic p-4">No classes found yet.</p>;
+    return <p className="text-slate-400 italic p-6 text-center text-sm">No class routines found.</p>;
   }
 
   return (
-    <div className="overflow-x-auto border rounded-xl shadow-sm">
-      <div
-        ref={gridRef}
-        className="grid text-[11px] min-w-max relative"
-        style={{ gridTemplateColumns: `190px repeat(${DAYS.length}, minmax(600px,1fr))` }}
-      >
-        {nowLine && (
-          <div
-            className="absolute w-[2px] bg-red-500 z-30 pointer-events-none"
-            style={{ left: nowLine.left, top: nowLine.top, height: nowLine.height }}
-            title="Current time"
+    <div className="space-y-2">
+      {selectedSlotForSwap && (
+        <div className="bg-sky-500 text-white text-xs px-4 py-2 rounded-xl flex items-center justify-between font-semibold shadow-md animate-bounce">
+          <span>
+            ⇄ Click any slot or cell to swap/move class <strong>{selectedSlotForSwap.courseCode}</strong>
+          </span>
+          <button
+            onClick={() => setSelectedSlotForSwap(null)}
+            className="bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded-lg underline"
           >
-            <span className="absolute -top-1 -left-[5px] w-3 h-3 rounded-full bg-red-500" />
-          </div>
-        )}
+            Cancel
+          </button>
+        </div>
+      )}
 
-        {/* Day name header row */}
-        <div className="sticky left-0 bg-blue-950 text-white p-2 font-semibold z-20">Batch / Day</div>
-        {DAYS.map((day) => (
-          <div key={day} className="bg-blue-950 text-white text-center p-2 font-semibold border-l border-blue-800">
-            {day}
-          </div>
-        ))}
-
-        {/* Period time header row */}
-        <div className="sticky left-0 bg-blue-50 z-20 border-t" />
-        {DAYS.map((day) => (
-          <div key={day} className="grid border-t border-l border-blue-100" style={{ gridTemplateColumns: DAY_COLUMNS }}>
-            {PERIODS.slice(0, 3).map((p) => <PeriodHeader key={p.id} p={p} day={day} />)}
-            <GapHeader gapId={1} day={day} />
-            {PERIODS.slice(3, 6).map((p) => <PeriodHeader key={p.id} p={p} day={day} />)}
-            <GapHeader gapId={2} day={day} />
-            {PERIODS.slice(6, 9).map((p) => <PeriodHeader key={p.id} p={p} day={day} />)}
-          </div>
-        ))}
-
-        {/* One data row per batch */}
-        {batches.map((batch) => (
-          <React.Fragment key={batch}>
-            <div className="sticky left-0 bg-emerald-50 border-t border-r p-2 font-medium z-20 flex items-center">
-              {batch}
+      <div className="overflow-x-auto border border-slate-200 rounded-2xl shadow-sm bg-white">
+        <div
+          ref={gridRef}
+          className="grid text-[11px] min-w-max relative"
+          style={{ gridTemplateColumns: `190px repeat(${DAYS.length}, minmax(640px,1fr))` }}
+        >
+          {nowLine && (
+            <div
+              className="absolute w-[2px] bg-red-500 z-30 pointer-events-none"
+              style={{ left: nowLine.left, top: nowLine.top, height: nowLine.height }}
+              title="Current time"
+            >
+              <span className="absolute -top-1 -left-[5px] w-3 h-3 rounded-full bg-red-500 ring-2 ring-red-200 animate-ping" />
             </div>
-            {DAYS.map((day) => (
-              <div key={day} className="grid border-t border-l" style={{ gridTemplateColumns: DAY_COLUMNS }}>
-                {BLOCK_KEYS.map((blockKey, bi) => {
-                  const labs = findLabs(batch, day, blockKey);
-                  return (
-                    <React.Fragment key={blockKey}>
-                      {labs.length > 0 ? (
-                        <PairedLabCell slots={labs} span={3} onEdit={onEdit} onDelete={onDelete} canManage={canManage} />
-                      ) : (
-                        BLOCKS[blockKey].periods.map((pid) => {
-                          const cls = findClass(batch, day, pid);
-                          return (
-                            <SlotCell
-                              key={pid}
-                              slot={cls}
-                              span={1}
-                              onEdit={onEdit}
-                              onDelete={onDelete}
-                              canManage={cls ? canManage(cls) : false}
-                            />
-                          );
-                        })
-                      )}
-                      {bi < 2 && <div className="bg-gray-200" />}
-                    </React.Fragment>
-                  );
-                })}
+          )}
+
+          {/* Day Header Row */}
+          <div className="sticky left-0 bg-slate-900 text-white p-2.5 font-bold z-20 shadow-md">Batch / Day</div>
+          {DAYS.map((day) => (
+            <div key={day} className="bg-slate-900 text-white text-center p-2.5 font-extrabold border-l border-slate-800 tracking-wide uppercase">
+              {day}
+            </div>
+          ))}
+
+          {/* Period Header Row */}
+          <div className="sticky left-0 bg-slate-100 z-20 border-t border-slate-200" />
+          {DAYS.map((day) => (
+            <div key={day} className="grid border-t border-l border-slate-200" style={{ gridTemplateColumns: DAY_COLUMNS }}>
+              {PERIODS.slice(0, 3).map((p) => <PeriodHeader key={p.id} p={p} day={day} />)}
+              <GapHeader gapId={1} day={day} />
+              {PERIODS.slice(3, 6).map((p) => <PeriodHeader key={p.id} p={p} day={day} />)}
+              <GapHeader gapId={2} day={day} />
+              {PERIODS.slice(6, 9).map((p) => <PeriodHeader key={p.id} p={p} day={day} />)}
+            </div>
+          ))}
+
+          {/* Batch Rows */}
+          {batches.map((batch) => (
+            <React.Fragment key={batch}>
+              <div className="sticky left-0 bg-sky-50/90 border-t border-r border-slate-200 p-2.5 font-bold text-slate-800 z-20 flex items-center shadow-sm">
+                {batch}
               </div>
-            ))}
-          </React.Fragment>
-        ))}
+              {DAYS.map((day) => (
+                <div key={day} className="grid border-t border-l border-slate-200" style={{ gridTemplateColumns: DAY_COLUMNS }}>
+                  {BLOCK_KEYS.map((blockKey, bi) => {
+                    const labs = findLabs(batch, day, blockKey);
+                    const cellKey = `${day}-${blockKey}`;
+                    const isOver = dragOverCell === cellKey;
+                    return (
+                      <React.Fragment key={blockKey}>
+                        {labs.length > 0 ? (
+                          <PairedLabCell
+                            slots={labs}
+                            span={3}
+                            day={day}
+                            blockKey={blockKey}
+                            onEdit={onEdit}
+                            onDelete={onDelete}
+                            canManage={canManage}
+                            onDragStart={handleDragStart}
+                            onDragOver={(e) => handleDragOver(e, cellKey)}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, day, undefined, blockKey)}
+                            isDragOver={isOver}
+                            selectedSlot={selectedSlotForSwap}
+                            onCellClick={handleCellClick}
+                          />
+                        ) : (
+                          BLOCKS[blockKey].periods.map((pid) => {
+                            const cls = findClass(batch, day, pid);
+                            const pCellKey = `${day}-${pid}`;
+                            const isPOver = dragOverCell === pCellKey;
+                            return (
+                              <SlotCell
+                                key={pid}
+                                slot={cls}
+                                span={1}
+                                day={day}
+                                periodId={pid}
+                                onEdit={onEdit}
+                                onDelete={onDelete}
+                                canManage={cls ? canManage(cls) : false}
+                                onDragStart={handleDragStart}
+                                onDragOver={(e) => handleDragOver(e, pCellKey)}
+                                onDragLeave={handleDragLeave}
+                                onDrop={(e) => handleDrop(e, day, pid, undefined)}
+                                isDragOver={isPOver}
+                                isSelected={selectedSlotForSwap?._id === cls?._id}
+                                onCellClick={handleCellClick}
+                              />
+                            );
+                          })
+                        )}
+                        {bi < 2 && <div className="bg-slate-200/80" />}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              ))}
+            </React.Fragment>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -215,68 +300,183 @@ function PeriodHeader({ p, day }) {
       data-role="period-header"
       data-day={day}
       data-period={p.id}
-      className="text-center py-1 border-r bg-amber-50 text-blue-900 leading-tight"
+      className="text-center py-1 border-r bg-amber-50/70 text-slate-800 leading-tight font-medium"
     >
-      <div>{p.start}</div>
-      <div>{p.end}</div>
+      <div className="font-semibold text-blue-950">{p.start}</div>
+      <div className="text-[10px] text-slate-500">{p.end}</div>
     </div>
   );
 }
 
 function GapHeader({ gapId, day }) {
-  return <div data-role="gap-header" data-day={day} data-gap={gapId} className="bg-gray-200" />;
+  return <div data-role="gap-header" data-day={day} data-gap={gapId} className="bg-slate-200/80" />;
 }
 
-function SlotCell({ slot, span, onEdit, onDelete, canManage }) {
+function SlotCell({
+  slot, span, day, periodId, onEdit, onDelete, canManage,
+  onDragStart, onDragOver, onDragLeave, onDrop, isDragOver, isSelected, onCellClick
+}) {
   const colorClass = COLOR_CLASSES[slot?.color ?? ''] ?? COLOR_CLASSES[''];
+
   return (
     <div
-      className={`border-r p-1 min-h-[58px] flex flex-col justify-center items-center text-center transition-colors ${slot ? colorClass : 'bg-white'}`}
+      draggable={Boolean(slot && canManage)}
+      onDragStart={(e) => onDragStart && onDragStart(e, slot)}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onClick={() => onCellClick && onCellClick(slot, day, periodId, undefined)}
+      className={`border-r p-1.5 min-h-[64px] flex flex-col justify-center items-center text-center transition-all relative group cursor-pointer ${
+        slot ? colorClass : 'bg-white hover:bg-sky-50/50'
+      } ${isDragOver ? 'drag-over-slot' : ''} ${isSelected ? 'ring-2 ring-sky-500 ring-offset-1 z-10' : ''}`}
       style={{ gridColumn: `span ${span}` }}
     >
-      {slot && (
+      {slot ? (
         <>
-          <div className="font-semibold leading-tight">{slot.courseCode}</div>
-          <div className="leading-tight">{slot.teacher}</div>
-          <div className="leading-tight opacity-80">{slot.room}</div>
+          {/* CT / Quiz / Lab Group Badges */}
+          <div className="flex items-center gap-0.5 flex-wrap justify-center mb-0.5">
+            {slot.isCT && (
+              <span className="bg-amber-500 text-white font-extrabold text-[9px] px-1 py-0.2 rounded-full shadow-sm">
+                📝 CT
+              </span>
+            )}
+            {slot.isQuiz && (
+              <span className="bg-purple-600 text-white font-extrabold text-[9px] px-1 py-0.2 rounded-full shadow-sm">
+                ⚡ Quiz
+              </span>
+            )}
+            {slot.labGroup && (
+              <span className="bg-sky-600 text-white font-bold text-[9px] px-1 py-0.2 rounded-full">
+                {slot.labGroup}
+              </span>
+            )}
+          </div>
+
+          <div className="font-extrabold leading-tight tracking-tight">{slot.courseCode}</div>
+          <div className="text-[10px] font-medium leading-tight opacity-90">{slot.teacher}</div>
+          <div className="text-[10px] leading-tight font-semibold opacity-75">{slot.room}</div>
+
           {canManage && (onEdit || onDelete) && (
-            <div className="mt-1 space-x-1">
+            <div className="mt-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               {onEdit && (
-                <button className="underline" onClick={() => onEdit(slot)}>Edit</button>
+                <button
+                  type="button"
+                  className="text-[9px] bg-white/80 hover:bg-white text-slate-800 font-bold px-1.5 py-0.5 rounded border border-slate-300"
+                  onClick={(e) => { e.stopPropagation(); onEdit(slot); }}
+                >
+                  Edit
+                </button>
               )}
               {onDelete && (
-                <button className="underline" onClick={() => onDelete(slot)}>Del</button>
+                <button
+                  type="button"
+                  className="text-[9px] bg-red-50 hover:bg-red-500 hover:text-white text-red-600 font-bold px-1.5 py-0.5 rounded border border-red-200"
+                  onClick={(e) => { e.stopPropagation(); onDelete(slot); }}
+                >
+                  Del
+                </button>
               )}
             </div>
           )}
         </>
+      ) : (
+        <span className="text-[10px] text-slate-300 group-hover:text-slate-400 font-medium">+</span>
       )}
     </div>
   );
 }
 
-// Renders one or two labs sharing the same 2h30m block, side by side.
-function PairedLabCell({ slots, span, onEdit, onDelete, canManage }) {
+// Renders one or two simultaneous labs sharing the same 2h30m block.
+function PairedLabCell({
+  slots, span, day, blockKey, onEdit, onDelete, canManage,
+  onDragStart, onDragOver, onDragLeave, onDrop, isDragOver, selectedSlot, onCellClick
+}) {
   if (slots.length === 1) {
-    return <SlotCell slot={slots[0]} span={span} onEdit={onEdit} onDelete={onDelete} canManage={canManage(slots[0])} />;
+    return (
+      <SlotCell
+        slot={slots[0]}
+        span={span}
+        day={day}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        canManage={canManage(slots[0])}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        isDragOver={isDragOver}
+        isSelected={selectedSlot?._id === slots[0]._id}
+        onCellClick={onCellClick}
+      />
+    );
   }
 
+  // Combined title representation e.g. "Analog (1st 30) / Digital (2nd 30)"
+  const titleSummary = slots.map((s) => `${s.courseCode}${s.labGroup ? ` (${s.labGroup})` : ''}`).join(' / ');
+
   return (
-    <div className="border-r flex min-h-[58px]" style={{ gridColumn: `span ${span}` }}>
+    <div
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`border-r flex min-h-[64px] relative rounded-lg overflow-hidden border border-slate-200 shadow-inner ${
+        isDragOver ? 'drag-over-slot' : ''
+      }`}
+      style={{ gridColumn: `span ${span}` }}
+    >
+      {/* Simultaneous lab header banner */}
+      <div className="absolute top-0 left-0 right-0 bg-blue-950/80 text-white text-[8px] font-bold text-center py-0.5 z-10 truncate px-1">
+        Simultaneous: {titleSummary}
+      </div>
+
       {slots.map((slot, i) => {
         const colorClass = COLOR_CLASSES[slot?.color ?? ''] ?? COLOR_CLASSES[''];
+        const isSel = selectedSlot?._id === slot._id;
+
         return (
           <div
             key={slot._id || i}
-            className={`flex-1 p-1 flex flex-col justify-center items-center text-center ${colorClass} ${i === 0 ? 'border-r border-white/50' : ''}`}
+            draggable={canManage(slot)}
+            onDragStart={(e) => onDragStart && onDragStart(e, slot)}
+            onClick={() => onCellClick && onCellClick(slot, day, undefined, blockKey)}
+            className={`flex-1 p-1.5 pt-4 flex flex-col justify-center items-center text-center cursor-pointer transition-all relative group ${colorClass} ${
+              i === 0 ? 'border-r border-white/50' : ''
+            } ${isSel ? 'ring-2 ring-sky-500 z-10' : ''}`}
           >
-            <div className="font-semibold leading-tight">{slot.courseCode}</div>
-            <div className="leading-tight">{slot.teacher}</div>
-            <div className="leading-tight opacity-80">{slot.room}</div>
+            <div className="flex items-center gap-0.5 flex-wrap justify-center mb-0.5">
+              {slot.labGroup && (
+                <span className="bg-blue-950 text-white font-extrabold text-[8px] px-1 py-0.2 rounded-full">
+                  {slot.labGroup}
+                </span>
+              )}
+              {slot.isCT && <span className="bg-amber-500 text-white text-[8px] font-bold px-1 rounded-full">CT</span>}
+              {slot.isQuiz && <span className="bg-purple-600 text-white text-[8px] font-bold px-1 rounded-full">Quiz</span>}
+            </div>
+
+            <div className="font-extrabold leading-tight tracking-tight text-[11px]">{slot.courseCode}</div>
+            <div className="text-[10px] font-medium leading-tight opacity-90">{slot.teacher}</div>
+            <div className="text-[10px] leading-tight font-semibold opacity-75">{slot.room}</div>
+
             {canManage(slot) && (onEdit || onDelete) && (
-              <div className="mt-1 space-x-1">
-                {onEdit && <button className="underline" onClick={() => onEdit(slot)}>Edit</button>}
-                {onDelete && <button className="underline" onClick={() => onDelete(slot)}>Del</button>}
+              <div className="mt-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {onEdit && (
+                  <button
+                    type="button"
+                    className="text-[9px] bg-white/80 hover:bg-white text-slate-800 font-bold px-1 py-0.5 rounded"
+                    onClick={(e) => { e.stopPropagation(); onEdit(slot); }}
+                  >
+                    Edit
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    type="button"
+                    className="text-[9px] bg-red-50 hover:bg-red-500 hover:text-white text-red-600 font-bold px-1 py-0.5 rounded"
+                    onClick={(e) => { e.stopPropagation(); onDelete(slot); }}
+                  >
+                    Del
+                  </button>
+                )}
               </div>
             )}
           </div>

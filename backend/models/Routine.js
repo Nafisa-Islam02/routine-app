@@ -24,8 +24,6 @@ const routineSchema = new mongoose.Schema(
     courseTitle: { type: String, default: '', trim: true },
     teacher: { type: String, required: true, trim: true },
     room: { type: String, required: true, trim: true },
-    // Optional highlight colour, purely cosmetic. Keep this list in sync with
-    // frontend/src/context/colors.js — "blue" is the new default for new slots.
     color: {
       type: String,
       enum: [
@@ -34,6 +32,9 @@ const routineSchema = new mongoose.Schema(
       ],
       default: 'blue',
     },
+    labGroup: { type: String, enum: ['', '1st 30', '2nd 30', 'Both'], default: '' },
+    isCT: { type: Boolean, default: false },
+    isQuiz: { type: Boolean, default: false },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }

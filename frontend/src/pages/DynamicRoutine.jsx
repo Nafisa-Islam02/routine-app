@@ -14,11 +14,11 @@ import WeeklySheet from '../components/WeeklySheet';
 
 const SERIES_OPTIONS = Object.keys(courseCatalog);
 
-function emptyRow(user) {
+function emptyRow(user, series) {
   return {
     key: crypto.randomUUID(),
     department: user?.department || '',
-    batch: '',
+    batch: series || SERIES_OPTIONS[0],
     courseCode: '',
     courseTitle: '',
     credit: '',
@@ -26,9 +26,22 @@ function emptyRow(user) {
     room: '',
     type: 'class',
     color: DEFAULT_COLOR,
+    labGroup: '',
+    isCT: false,
+    isQuiz: false,
     days: [],
     pairEnabled: false,
-    pair: { courseCode: '', courseTitle: '', credit: '', teacher: '', room: '', color: DEFAULT_COLOR },
+    pair: {
+      courseCode: '',
+      courseTitle: '',
+      credit: '',
+      teacher: '',
+      room: '',
+      color: DEFAULT_COLOR,
+      labGroup: '2nd 30',
+      isCT: false,
+      isQuiz: false,
+    },
   };
 }
 
@@ -38,13 +51,13 @@ function coursesFor(batch) {
 
 export default function DynamicRoutine() {
   const { user } = useAuth();
-  const [rows, setRows] = useState([emptyRow(user)]);
+  const [selectedSeries, setSelectedSeries] = useState(SERIES_OPTIONS[1] || SERIES_OPTIONS[0]);
+  const [rows, setRows] = useState([emptyRow(user, selectedSeries)]);
   const [routines, setRoutines] = useState([]);
   const [skipped, setSkipped] = useState([]);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [sheetBatch, setSheetBatch] = useState('');
 
   const fetchRoutines = useCallback(async () => {
     const params = {};
@@ -55,24 +68,22 @@ export default function DynamicRoutine() {
 
   useEffect(() => { fetchRoutines(); }, [fetchRoutines]);
 
-  const sheetBatchOptions = useMemo(
-    () => Array.from(new Set(routines.map((r) => r.batch))),
-    [routines]
-  );
-
-  useEffect(() => {
-    if (sheetBatchOptions.length === 0) {
-      setSheetBatch('');
-    } else if (!sheetBatchOptions.includes(sheetBatch)) {
-      setSheetBatch(sheetBatchOptions[0]);
-    }
-  }, [sheetBatchOptions, sheetBatch]);
-
   useEffect(() => {
     function handleUpdate() { fetchRoutines(); }
     socket.on('dynamicRoutineUpdated', handleUpdate);
     return () => socket.off('dynamicRoutineUpdated', handleUpdate);
   }, [fetchRoutines]);
+
+  // When selectedSeries changes, update existing rows to match
+  const handleSeriesChange = (series) => {
+    setSelectedSeries(series);
+    setRows((rs) => rs.map((r) => ({ ...r, batch: series, courseCode: '', courseTitle: '', credit: '', room: '' })));
+  };
+
+  const seriesRoutines = useMemo(
+    () => routines.filter((r) => r.batch === selectedSeries),
+    [routines, selectedSeries]
+  );
 
   function updateRow(key, patch) {
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -103,47 +114,45 @@ export default function DynamicRoutine() {
   }
 
   function addRow() {
-    setRows((rs) => [...rs, emptyRow(user)]);
+    setRows((rs) => [...rs, emptyRow(user, selectedSeries)]);
   }
 
   function removeRow(key) {
     setRows((rs) => (rs.length === 1 ? rs : rs.filter((r) => r.key !== key)));
   }
 
-  function handleSeriesChange(key, batch) {
-    updateRow(key, { batch, courseCode: '', courseTitle: '', credit: '', type: 'class', room: '' });
-  }
-
   function handleCourseCodeChange(key, row, code) {
-    const match = coursesFor(row.batch).find((c) => c.code === code);
+    const match = coursesFor(selectedSeries).find((c) => c.code === code);
     updateRow(key, {
       courseCode: code,
       courseTitle: match?.title || '',
       credit: match?.credit ?? '',
       type: match?.type || row.type,
       room: '',
+      labGroup: match?.type === 'lab' ? '1st 30' : '',
     });
   }
 
   function handleCourseTitleChange(key, row, title) {
-    const match = coursesFor(row.batch).find((c) => c.title === title);
+    const match = coursesFor(selectedSeries).find((c) => c.title === title);
     updateRow(key, {
       courseTitle: title,
       courseCode: match?.code || '',
       credit: match?.credit ?? '',
       type: match?.type || row.type,
       room: '',
+      labGroup: match?.type === 'lab' ? '1st 30' : '',
     });
   }
 
   function handlePairCourseCodeChange(key, row, code) {
-    const match = coursesFor(row.batch).find((c) => c.code === code);
-    updatePair(key, { courseCode: code, courseTitle: match?.title || '', credit: match?.credit ?? '' });
+    const match = coursesFor(selectedSeries).find((c) => c.code === code);
+    updatePair(key, { courseCode: code, courseTitle: match?.title || '', credit: match?.credit ?? '', labGroup: '2nd 30' });
   }
 
   function handlePairCourseTitleChange(key, row, title) {
-    const match = coursesFor(row.batch).find((c) => c.title === title);
-    updatePair(key, { courseTitle: title, courseCode: match?.code || '', credit: match?.credit ?? '' });
+    const match = coursesFor(selectedSeries).find((c) => c.title === title);
+    updatePair(key, { courseTitle: title, courseCode: match?.code || '', credit: match?.credit ?? '', labGroup: '2nd 30' });
   }
 
   async function handleGenerate(e) {
@@ -152,8 +161,8 @@ export default function DynamicRoutine() {
     setSkipped([]);
 
     for (const r of rows) {
-      if (!r.department || !r.batch || !r.courseCode || !r.teacher || !r.room) {
-        setError('Every row needs a department, series, course, teacher and room.');
+      if (!r.department || !selectedSeries || !r.courseCode || !r.teacher || !r.room) {
+        setError('Every row needs a department, course code, teacher and room.');
         return;
       }
       if (r.days.length === 0) {
@@ -177,7 +186,7 @@ export default function DynamicRoutine() {
       const payload = {
         classes: rows.map((r) => ({
           department: r.department,
-          batch: r.batch,
+          batch: selectedSeries,
           courseCode: r.courseCode,
           courseTitle: r.courseTitle,
           credit: r.credit,
@@ -185,20 +194,39 @@ export default function DynamicRoutine() {
           room: r.room,
           type: r.type,
           color: r.color,
+          labGroup: r.labGroup,
+          isCT: r.isCT,
+          isQuiz: r.isQuiz,
           days: r.days,
-          pair: r.pairEnabled ? r.pair : null,
+          pair: r.pairEnabled ? { ...r.pair, batch: selectedSeries } : null,
         })),
       };
       const { data } = await api.post('/api/dynamic-routines/generate', payload);
       setSkipped(data.skipped || []);
-      if (data.created?.length) setToast(`Placed ${data.created.length} slot(s) automatically.`);
+      if (data.created?.length) setToast(`Placed ${data.created.length} slot(s) automatically for ${selectedSeries}.`);
       if (data.skipped?.length) setError(`${data.skipped.length} slot(s) could not be placed — see the list below.`);
-      setRows([emptyRow(user)]);
+      setRows([emptyRow(user, selectedSeries)]);
       fetchRoutines();
     } catch (err) {
       setError(err.friendlyMessage || err.response?.data?.message || 'Something went wrong generating the routine.');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleSwap(sourceId, targetDay, targetPeriod, targetBlock) {
+    setError('');
+    try {
+      await api.put('/api/dynamic-routines/swap', {
+        sourceId,
+        targetDay,
+        targetPeriod,
+        targetBlock,
+      });
+      setToast('Classes swapped/moved successfully.');
+      fetchRoutines();
+    } catch (err) {
+      setError(err.friendlyMessage || err.response?.data?.message || 'Failed to swap or move slot.');
     }
   }
 
@@ -215,13 +243,13 @@ export default function DynamicRoutine() {
   }
 
   async function handleClearAll() {
-    if (!confirm('Clear all your dynamic routine slots? This cannot be undone.')) return;
+    if (!confirm(`Clear all dynamic routine slots for ${selectedSeries}? This cannot be undone.`)) return;
     setError('');
     try {
-      const params = {};
+      const params = { batch: selectedSeries };
       if (user?.department) params.department = user.department;
       await api.delete('/api/dynamic-routines', { params });
-      setToast('Dynamic routine cleared.');
+      setToast(`Dynamic routine for ${selectedSeries} cleared.`);
       fetchRoutines();
     } catch (err) {
       setError(err.friendlyMessage || err.response?.data?.message || 'Failed to clear');
@@ -233,35 +261,63 @@ export default function DynamicRoutine() {
       <Notification message={toast} onClose={() => setToast('')} />
       <RoutineHeader />
 
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h2 className="text-2xl font-extrabold text-blue-950 tracking-tight">Dynamic Routine</h2>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">Auto-scheduled &middot; conflict-free</p>
+      <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
+        {/* Top Header & Series Selector Bar */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Dynamic Routine Builder</h2>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Auto-scheduled &middot; Drag &amp; drop editable &middot; Single Series Focus
+              </p>
+            </div>
+            <button
+              onClick={handleClearAll}
+              type="button"
+              className="text-xs font-bold text-red-600 hover:text-white hover:bg-red-500 border border-red-200 hover:border-red-500 px-3.5 py-2 rounded-xl transition-all"
+            >
+              Clear Series Routine
+            </button>
           </div>
-          <button
-            onClick={handleClearAll}
-            type="button"
-            className="text-sm font-medium text-red-500 hover:text-white hover:bg-red-500 border border-red-200 hover:border-red-500 px-3 py-1.5 rounded-full transition-colors"
-          >
-            Clear all
-          </button>
+
+          {/* Series Selection Bar */}
+          <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <label className="text-xs font-extrabold uppercase tracking-wide text-slate-600 flex items-center gap-2">
+              <span>🎯 Active Series Routine:</span>
+              <select
+                value={selectedSeries}
+                onChange={(e) => handleSeriesChange(e.target.value)}
+                className="bg-sky-50 border border-sky-300 text-sky-900 font-bold px-3 py-1.5 rounded-xl text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none"
+              >
+                {SERIES_OPTIONS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-3 py-1 rounded-xl w-fit">
+              Showing 1 series routine at a time
+            </span>
+          </div>
         </div>
 
         {error && (
           <p className="text-red-700 text-sm bg-red-50 border border-red-200 px-4 py-3 rounded-xl shadow-sm">{error}</p>
         )}
 
+        {/* Dynamic Row Generator Form */}
         <form onSubmit={handleGenerate} className="space-y-4">
           {rows.map((row, idx) => (
             <ClassRow
               key={row.key}
               row={row}
               index={idx}
+              series={selectedSeries}
               canRemove={rows.length > 1}
               onRemove={() => removeRow(row.key)}
               onUpdate={(patch) => updateRow(row.key, patch)}
-              onSeriesChange={(v) => handleSeriesChange(row.key, v)}
               onCourseCodeChange={(v) => handleCourseCodeChange(row.key, row, v)}
               onCourseTitleChange={(v) => handleCourseTitleChange(row.key, row, v)}
               onPairCourseCodeChange={(v) => handlePairCourseCodeChange(row.key, row, v)}
@@ -278,14 +334,14 @@ export default function DynamicRoutine() {
               onClick={addRow}
               className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 hover:border-slate-400 transition-colors font-medium text-slate-600 text-sm shadow-sm"
             >
-              + Add another class
+              + Add another class row
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="bg-gradient-to-r from-sky-600 to-blue-800 text-white px-6 py-2.5 rounded-xl hover:from-sky-500 hover:to-blue-700 disabled:opacity-50 font-semibold transition-all shadow-md shadow-blue-900/20 text-sm"
+              className="bg-gradient-to-r from-sky-600 to-blue-800 text-white px-6 py-2.5 rounded-xl hover:from-sky-500 hover:to-blue-700 disabled:opacity-50 font-bold transition-all shadow-md shadow-blue-900/20 text-sm"
             >
-              {submitting ? 'Generating…' : 'Generate Routine'}
+              {submitting ? 'Generating…' : `Generate Routine for ${selectedSeries}`}
             </button>
           </div>
         </form>
@@ -303,38 +359,47 @@ export default function DynamicRoutine() {
           </div>
         )}
 
-        <div>
-          <h3 className="font-semibold mb-2 text-slate-700 text-sm uppercase tracking-wide">Resulting Routine</h3>
-          <RoutineGrid routines={routines} onDelete={handleDelete} currentUser={user} />
+        {/* Dynamic Routine Result Grid with Drag and Drop */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="font-extrabold text-slate-800 text-base uppercase tracking-wide flex items-center gap-2">
+              <span>⚡ Resulting Series Routine:</span>
+              <span className="text-sky-700 font-bold">{selectedSeries}</span>
+            </h3>
+            <span className="text-xs text-slate-400 font-medium italic">
+              💡 Tip: Drag and drop classes in the grid below to switch their slots
+            </span>
+          </div>
+
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+            <RoutineGrid
+              routines={seriesRoutines}
+              onDelete={handleDelete}
+              onSwap={handleSwap}
+              currentUser={user}
+            />
+          </div>
         </div>
 
-        {sheetBatchOptions.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
-              <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">Printable Weekly Sheet</h3>
-              <select
-                value={sheetBatch}
-                onChange={(e) => setSheetBatch(e.target.value)}
-                className="border border-slate-200 bg-slate-50/60 p-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
-              >
-                {sheetBatchOptions.map((b) => <option key={b} value={b}>{b}</option>)}
-              </select>
-            </div>
-            <WeeklySheet batch={sheetBatch} routines={routines} />
-          </div>
-        )}
+        {/* Weekly Printable Sheet */}
+        <div>
+          <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wide mb-2">
+            Printable Weekly Sheet ({selectedSeries})
+          </h3>
+          <WeeklySheet batch={selectedSeries} routines={seriesRoutines} />
+        </div>
       </div>
     </div>
   );
 }
 
 function ClassRow({
-  row, index, canRemove, onRemove, onUpdate,
-  onSeriesChange, onCourseCodeChange, onCourseTitleChange,
+  row, index, series, canRemove, onRemove, onUpdate,
+  onCourseCodeChange, onCourseTitleChange,
   onPairCourseCodeChange, onPairCourseTitleChange, onPairUpdate,
   onToggleDay, onToggleAllWeek,
 }) {
-  const courses = useMemo(() => coursesFor(row.batch), [row.batch]);
+  const courses = useMemo(() => coursesFor(series), [series]);
   const rooms = useMemo(() => roomsFor(row.type), [row.type]);
   const pairableCourses = useMemo(
     () => courses.filter((c) => c.type === 'lab' && c.credit === row.credit && c.code !== row.courseCode),
@@ -342,21 +407,21 @@ function ClassRow({
   );
 
   const inputCls =
-    'border border-slate-200 bg-slate-50/60 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+    'border border-slate-200 bg-slate-50/60 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium';
 
   return (
     <div className="relative bg-white shadow-sm hover:shadow-md rounded-2xl p-5 space-y-4 border border-slate-200 transition-shadow">
-      <span className="absolute left-0 top-5 bottom-5 w-1 rounded-full bg-gradient-to-b from-sky-400 to-blue-700" />
+      <span className="absolute left-0 top-5 bottom-5 w-1.5 rounded-full bg-gradient-to-b from-sky-400 to-blue-700" />
 
       <div className="flex justify-between items-center pl-2">
-        <h3 className="font-bold text-blue-950 flex items-center gap-2">
-          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-950 text-white text-xs font-bold">
+        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-950 text-white text-xs font-extrabold">
             {index + 1}
           </span>
-          Class
+          Class Row &middot; <span className="text-sky-700 font-semibold">{series}</span>
         </h3>
         {canRemove && (
-          <button type="button" onClick={onRemove} className="text-red-500 text-xs font-medium hover:underline">
+          <button type="button" onClick={onRemove} className="text-red-500 text-xs font-semibold hover:underline">
             Remove
           </button>
         )}
@@ -372,18 +437,17 @@ function ClassRow({
         />
 
         <select
-          value={row.batch}
-          onChange={(e) => onSeriesChange(e.target.value)}
-          className={`${inputCls} col-span-2`}
-          required
-        >
-          <option value="" disabled>Select series…</option>
-          {SERIES_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-
-        <select
           value={row.type}
-          onChange={(e) => onUpdate({ type: e.target.value, courseCode: '', courseTitle: '', credit: '', room: '' })}
+          onChange={(e) =>
+            onUpdate({
+              type: e.target.value,
+              courseCode: '',
+              courseTitle: '',
+              credit: '',
+              room: '',
+              labGroup: e.target.value === 'lab' ? '1st 30' : '',
+            })
+          }
           className={inputCls}
         >
           <option value="class">Class (50 min)</option>
@@ -394,42 +458,72 @@ function ClassRow({
           value={row.courseCode}
           onChange={(e) => onCourseCodeChange(e.target.value)}
           className={inputCls}
-          disabled={!row.batch}
           required
         >
-          <option value="" disabled>{row.batch ? 'Course code…' : 'Pick a series first'}</option>
+          <option value="" disabled>Course code…</option>
           {courses.filter((c) => c.type === row.type).map((c) => <option key={c.code} value={c.code}>{c.code}</option>)}
         </select>
+        
         <select
           value={row.courseTitle}
           onChange={(e) => onCourseTitleChange(e.target.value)}
           className={inputCls}
-          disabled={!row.batch}
         >
-          <option value="" disabled>{row.batch ? 'Course title…' : 'Pick a series first'}</option>
+          <option value="" disabled>Course title…</option>
           {courses.filter((c) => c.type === row.type).map((c) => <option key={c.code} value={c.title}>{c.title}</option>)}
         </select>
-        {row.credit !== '' ? (
-          <div className="flex items-center">
-            <span className="text-xs font-semibold bg-sky-100 text-sky-700 px-3 py-1.5 rounded-full">
-              {row.credit} Cr
-            </span>
-          </div>
-        ) : <div />}
 
         <select value={row.teacher} onChange={(e) => onUpdate({ teacher: e.target.value })} className={inputCls} required>
           <option value="" disabled>Teacher…</option>
           {TEACHERS.map((t) => <option key={t.initial + t.name} value={t.initial}>{t.name} ({t.initial})</option>)}
         </select>
+
         <select value={row.room} onChange={(e) => onUpdate({ room: e.target.value })} className={inputCls} required>
           <option value="" disabled>Room…</option>
           {rooms.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
+
         <select value={row.color} onChange={(e) => onUpdate({ color: e.target.value })} className={inputCls}>
           {COLOR_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
+
+        {row.type === 'lab' && (
+          <select
+            value={row.labGroup}
+            onChange={(e) => onUpdate({ labGroup: e.target.value })}
+            className={inputCls}
+          >
+            <option value="1st 30">Lab Option: 1st 30</option>
+            <option value="2nd 30">Lab Option: 2nd 30</option>
+            <option value="Both">Lab Option: Both / Full</option>
+          </select>
+        )}
       </div>
 
+      {/* Class Test (CT) & Quiz Toggles */}
+      <div className="flex items-center gap-6 pl-2 pt-1">
+        <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={row.isCT}
+            onChange={(e) => onUpdate({ isCT: e.target.checked })}
+            className="w-4 h-4 rounded accent-amber-500 cursor-pointer"
+          />
+          <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md">📝 Class Test (CT)</span>
+        </label>
+
+        <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={row.isQuiz}
+            onChange={(e) => onUpdate({ isQuiz: e.target.checked })}
+            className="w-4 h-4 rounded accent-purple-600 cursor-pointer"
+          />
+          <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-md">⚡ Quiz Option</span>
+        </label>
+      </div>
+
+      {/* Paired Lab Option */}
       {row.type === 'lab' && (
         <div className="border-t border-dashed border-slate-200 pt-4 ml-2">
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer w-fit">
@@ -440,7 +534,7 @@ function ClassRow({
               disabled={row.credit === ''}
               className="w-4 h-4 accent-sky-600"
             />
-            Pair a second lab in this same slot (same batch, matching credit)
+            Pair simultaneous lab in this slot (e.g. Analog Lab 1st 30 / Digital Lab 2nd 30)
           </label>
 
           {row.pairEnabled && (
@@ -454,6 +548,7 @@ function ClassRow({
                 <option value="" disabled>Paired course code…</option>
                 {pairableCourses.map((c) => <option key={c.code} value={c.code}>{c.code}</option>)}
               </select>
+
               <select
                 value={row.pair.courseTitle}
                 onChange={(e) => onPairCourseTitleChange(e.target.value)}
@@ -462,34 +557,42 @@ function ClassRow({
                 <option value="" disabled>Paired course title…</option>
                 {pairableCourses.map((c) => <option key={c.code} value={c.title}>{c.title}</option>)}
               </select>
+
               <select value={row.pair.teacher} onChange={(e) => onPairUpdate({ teacher: e.target.value })} className={inputCls} required>
                 <option value="" disabled>Paired teacher…</option>
                 {TEACHERS.map((t) => <option key={t.initial + t.name} value={t.initial}>{t.name} ({t.initial})</option>)}
               </select>
+
               <select value={row.pair.room} onChange={(e) => onPairUpdate({ room: e.target.value })} className={inputCls} required>
                 <option value="" disabled>Paired room…</option>
                 {roomsFor('lab').filter((r) => r !== row.room).map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
-              <select value={row.pair.color} onChange={(e) => onPairUpdate({ color: e.target.value })} className={`${inputCls} col-span-2`}>
+
+              <select
+                value={row.pair.labGroup}
+                onChange={(e) => onPairUpdate({ labGroup: e.target.value })}
+                className={inputCls}
+              >
+                <option value="2nd 30">Paired Group: 2nd 30</option>
+                <option value="1st 30">Paired Group: 1st 30</option>
+              </select>
+
+              <select value={row.pair.color} onChange={(e) => onPairUpdate({ color: e.target.value })} className={inputCls}>
                 {COLOR_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
-              {pairableCourses.length === 0 && (
-                <p className="col-span-2 md:col-span-4 text-xs text-amber-700">
-                  No other {row.credit}-credit lab found in this series to pair with.
-                </p>
-              )}
             </div>
           )}
         </div>
       )}
 
+      {/* Day Pickers */}
       <div className="pl-2">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Which day(s)?</p>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">Schedule Day(s):</p>
         <div className="flex flex-wrap gap-2 items-center">
           {DAYS.map((d) => (
             <label
               key={d}
-              className={`flex items-center gap-1 text-sm border rounded-full px-3 py-1 cursor-pointer transition-colors ${
+              className={`flex items-center gap-1 text-xs border rounded-full px-3 py-1 cursor-pointer transition-colors font-semibold ${
                 row.days.includes(d)
                   ? 'bg-blue-950 text-white border-blue-950 shadow-sm'
                   : 'border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -499,7 +602,7 @@ function ClassRow({
               {d}
             </label>
           ))}
-          <button type="button" onClick={onToggleAllWeek} className="text-xs font-semibold underline text-sky-700 ml-1">
+          <button type="button" onClick={onToggleAllWeek} className="text-xs font-bold underline text-sky-700 ml-1">
             {DAYS.every((d) => row.days.includes(d)) ? 'Clear all' : 'All week'}
           </button>
         </div>
