@@ -225,3 +225,102 @@ exports.getHistory = async (req, res) => {
   }
 };
 
+// PUT /api/routines/swap
+exports.swapRoutine = async (req, res) => {
+  try {
+    const { sourceId, targetDay, targetPeriod, targetBlock } = req.body;
+    const sourceSlot = await Routine.findById(sourceId);
+    if (!sourceSlot) return res.status(404).json({ message: 'Source slot not found' });
+
+    if (!canManage(req.user, sourceSlot)) {
+      return res.status(403).json({ message: 'You can only move slots you created' });
+    }
+
+    if (!DAYS.includes(targetDay)) {
+      return res.status(400).json({ message: 'Invalid target day' });
+    }
+
+    const type = sourceSlot.type;
+    const times = resolveSlotTimes({
+      type,
+      period: type === 'class' ? Number(targetPeriod) : undefined,
+      block: type === 'lab' ? targetBlock : undefined,
+    });
+
+    if (!times) {
+      return res.status(400).json({ message: 'Invalid target period or block timing' });
+    }
+
+    const targetFilter = {
+      department: sourceSlot.department,
+      batch: sourceSlot.batch,
+      day: targetDay,
+      type,
+    };
+    if (type === 'class') targetFilter.period = Number(targetPeriod);
+    else targetFilter.block = targetBlock;
+
+    const targetSlot = await Routine.findOne(targetFilter);
+
+    if (targetSlot) {
+      const srcDay = sourceSlot.day;
+      const srcPeriod = sourceSlot.period;
+      const srcBlock = sourceSlot.block;
+      const srcStart = sourceSlot.startTime;
+      const srcEnd = sourceSlot.endTime;
+
+      sourceSlot.day = targetSlot.day;
+      sourceSlot.period = targetSlot.period;
+      sourceSlot.block = targetSlot.block;
+      sourceSlot.startTime = targetSlot.startTime;
+      sourceSlot.endTime = targetSlot.endTime;
+      await sourceSlot.save();
+
+      targetSlot.day = srcDay;
+      targetSlot.period = srcPeriod;
+      targetSlot.block = srcBlock;
+      targetSlot.startTime = srcStart;
+      targetSlot.endTime = srcEnd;
+      await targetSlot.save();
+
+      const noteMsg = `Swapped class [${sourceSlot.courseCode}] with [${targetSlot.courseCode}] on ${targetDay} for ${sourceSlot.batch}.`;
+      const note = await Notification.create({
+        message: noteMsg,
+        source: 'routine',
+        actionType: 'updated',
+        actor: req.user.userId,
+        department: sourceSlot.department,
+      });
+      const populated = await note.populate('actor', 'name role');
+      req.io.emit('notification', populated);
+      req.io.emit('routineUpdated', { type: 'swapped', sourceSlot, targetSlot });
+
+      return res.json({ message: 'Swapped successfully', sourceSlot, targetSlot });
+    } else {
+      sourceSlot.day = targetDay;
+      sourceSlot.period = type === 'class' ? Number(targetPeriod) : undefined;
+      sourceSlot.block = type === 'lab' ? targetBlock : undefined;
+      sourceSlot.startTime = times.startTime;
+      sourceSlot.endTime = times.endTime;
+      await sourceSlot.save();
+
+      const noteMsg = `Moved class [${sourceSlot.courseCode}] to ${targetDay} (${times.startTime}-${times.endTime}) in Room ${sourceSlot.room} for ${sourceSlot.batch}.`;
+      const note = await Notification.create({
+        message: noteMsg,
+        source: 'routine',
+        actionType: 'updated',
+        actor: req.user.userId,
+        department: sourceSlot.department,
+      });
+      const populated = await note.populate('actor', 'name role');
+      req.io.emit('notification', populated);
+      req.io.emit('routineUpdated', { type: 'moved', sourceSlot });
+
+      return res.json({ message: 'Moved successfully', sourceSlot });
+    }
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to swap or move slot', error: err.message });
+  }
+};
+
+

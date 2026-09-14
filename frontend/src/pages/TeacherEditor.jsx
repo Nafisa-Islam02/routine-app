@@ -12,7 +12,7 @@ export default function TeacherEditor() {
   const { user } = useAuth();
   const [routines, setRoutines] = useState([]);
   const [editingSlot, setEditingSlot] = useState(null);
-  const [showForm, setShowForm] = useState(true); // Open directly as requested
+  const [showForm, setShowForm] = useState(true);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const formRef = useRef(null);
@@ -61,6 +61,22 @@ export default function TeacherEditor() {
     }
   }
 
+  async function handleSwap(sourceId, targetDay, targetPeriod, targetBlock) {
+    setError('');
+    try {
+      await api.put('/api/routines/swap', {
+        sourceId,
+        targetDay,
+        targetPeriod,
+        targetBlock,
+      });
+      setToast('Classes moved/swapped successfully.');
+      fetchRoutines();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to swap or move slot');
+    }
+  }
+
   function handleEdit(slot) {
     setEditingSlot(slot);
     setShowForm(true);
@@ -103,7 +119,7 @@ export default function TeacherEditor() {
         <div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Manage Routine Slots</h2>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Create or edit class schedules &middot; Click any empty cell in the matrix to pre-select time
+            Create or edit class schedules &middot; Drag &amp; drop slots or click empty cells to schedule
           </p>
         </div>
         <button
@@ -133,23 +149,29 @@ export default function TeacherEditor() {
         </div>
       )}
 
-      {/* Routine Grid Section */}
+      {/* Routine Grid Section with Drag & Drop */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
         <div className="flex justify-between items-center flex-wrap gap-2">
           <h3 className="font-extrabold text-slate-800 text-base uppercase tracking-tight">
             Full Department Routine Matrix
           </h3>
-          {user?.role === 'teacher' && (
-            <span className="text-xs text-sky-700 font-semibold bg-sky-50 px-3 py-1 rounded-full">
-              Teacher Mode: You can edit slots created by you
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-sky-800 font-bold bg-sky-50 px-3 py-1 rounded-full border border-sky-100">
+              ✋ Drag &amp; Drop Enabled
             </span>
-          )}
+            {user?.role === 'teacher' && (
+              <span className="text-xs text-slate-600 font-semibold bg-slate-100 px-3 py-1 rounded-full">
+                Teacher Mode
+              </span>
+            )}
+          </div>
         </div>
         
         <RoutineGrid
           routines={routines}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onSwap={handleSwap}
           onEmptyCellClick={handleEmptyCellClick}
           currentUser={user}
         />

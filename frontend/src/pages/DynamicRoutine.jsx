@@ -370,10 +370,10 @@ export default function DynamicRoutine() {
           </div>
         )}
 
-        {/* Printable Sheet View */}
+        {/* Weekly Routine View */}
         <div className="space-y-2 pt-4">
           <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wide">
-            Printable Sheet ({selectedSeries})
+            Weekly Routine ({selectedSeries})
           </h3>
           <WeeklySheet batch={selectedSeries} routines={seriesRoutines} />
         </div>

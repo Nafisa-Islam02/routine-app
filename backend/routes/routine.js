@@ -8,12 +8,15 @@ const {
   updateRoutine,
   deleteRoutine,
   getHistory,
+  swapRoutine,
 } = require('../controllers/routineController');
 
 router.get('/', auth, getRoutines);
 router.get('/:id/history', auth, getHistory);
 router.post('/', auth, requireRole('admin', 'teacher'), createRoutine);
+router.put('/swap', auth, requireRole('admin', 'teacher'), swapRoutine);
 router.put('/:id', auth, requireRole('admin', 'teacher'), updateRoutine);
 router.delete('/:id', auth, requireRole('admin', 'teacher'), deleteRoutine);
 
 module.exports = router;
+

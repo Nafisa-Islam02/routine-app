@@ -1,4 +1,6 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import api from '../api/axios';
 import { socket } from '../socket';
 import { useAuth } from '../context/AuthContext';
@@ -6,6 +8,7 @@ import RoutineGrid from '../components/RoutineGrid';
 import RoutineHeader from '../components/RoutineHeader';
 import RoutineLegend from '../components/RoutineLegend';
 import Notification from '../components/Notification';
+import WeeklySheet from '../components/WeeklySheet';
 
 export default function RoutineView() {
   const { user } = useAuth();
@@ -13,8 +16,10 @@ export default function RoutineView() {
   const [dynamicRoutines, setDynamicRoutines] = useState([]);
   const [department, setDepartment] = useState(user?.department || '');
   const [selectedBatch, setSelectedBatch] = useState('All');
+  const [viewMode, setViewMode] = useState('ecat'); // 'ecat' | 'matrix'
   const [toast, setToast] = useState('');
   const [loading, setLoading] = useState(true);
+  const pdfContainerRef = useRef(null);
 
   const fetchAllRoutines = useCallback(async () => {
     setLoading(true);
@@ -63,16 +68,19 @@ export default function RoutineView() {
   }, [fetchAllRoutines]);
 
   // Combine dynamic and manual routines so dashboard is 100% synchronized
+  const allCombinedRoutines = useMemo(() => {
+    return [...dynamicRoutines, ...routines];
+  }, [dynamicRoutines, routines]);
+
   const combinedRoutines = useMemo(() => {
-    const combined = [...dynamicRoutines, ...routines];
-    if (selectedBatch === 'All') return combined;
-    return combined.filter((r) => r.batch === selectedBatch);
-  }, [dynamicRoutines, routines, selectedBatch]);
+    if (selectedBatch === 'All') return allCombinedRoutines;
+    return allCombinedRoutines.filter((r) => r.batch === selectedBatch);
+  }, [allCombinedRoutines, selectedBatch]);
 
   const availableBatches = useMemo(() => {
-    const set = new Set([...dynamicRoutines, ...routines].map((r) => r.batch));
+    const set = new Set(allCombinedRoutines.map((r) => r.batch));
     return Array.from(set);
-  }, [dynamicRoutines, routines]);
+  }, [allCombinedRoutines]);
 
   // Stats calculation
   const stats = useMemo(() => {
@@ -82,6 +90,69 @@ export default function RoutineView() {
     const labsCount = combinedRoutines.filter((r) => r.type === 'lab').length;
     return { total, ctCount, quizCount, labsCount };
   }, [combinedRoutines]);
+
+  // PDF Export logic
+  const handleDownloadPDF = async (targetBatchName = null) => {
+    try {
+      setToast('Generating PDF document…');
+      const container = pdfContainerRef.current;
+      if (!container) return;
+
+      const sheetsToExport = container.querySelectorAll('[data-pdf-sheet]');
+      if (!sheetsToExport || sheetsToExport.length === 0) {
+        setToast('No routine sheet found to export.');
+        return;
+      }
+
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      let pageCount = 0;
+
+      for (let i = 0; i < sheetsToExport.length; i++) {
+        const sheetEl = sheetsToExport[i];
+        const sheetBatch = sheetEl.getAttribute('data-pdf-sheet');
+
+        // Filter based on target request
+        if (targetBatchName && sheetBatch !== targetBatchName) continue;
+        if (!targetBatchName && selectedBatch !== 'All' && sheetBatch !== selectedBatch) continue;
+
+        const canvas = await html2canvas(sheetEl, {
+          scale: 2,
+          backgroundColor: '#0f172a',
+          useCORS: true,
+          logging: false,
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        if (pageCount > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, Math.min(pdfHeight, pdf.internal.pageSize.getHeight()));
+        pageCount++;
+      }
+
+      if (pageCount > 0) {
+        const fileName = targetBatchName
+          ? `weekly-routine-${targetBatchName.toLowerCase().replace(/[^a-z0-9]/g, '-')}.pdf`
+          : selectedBatch !== 'All'
+          ? `weekly-routine-${selectedBatch.toLowerCase().replace(/[^a-z0-9]/g, '-')}.pdf`
+          : `weekly-routine-all-series.pdf`;
+
+        pdf.save(fileName);
+        setToast(`Downloaded ${fileName} successfully!`);
+      } else {
+        setToast('Selected series routine was not rendered for export.');
+      }
+    } catch (err) {
+      console.error(err);
+      setToast('Failed to generate PDF. Please try again.');
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
@@ -135,11 +206,11 @@ export default function RoutineView() {
         </div>
       </div>
 
-      {/* Filter and Control Bar */}
+      {/* Filter, View Switcher, and PDF Export Control Bar */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Dashboard Routine Matrix</h2>
-          <p className="text-xs text-slate-500 font-medium">Real-time synchronized class schedule</p>
+          <p className="text-xs text-slate-500 font-medium">Real-time synchronized weekly class schedule</p>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
@@ -154,12 +225,32 @@ export default function RoutineView() {
             />
           </div>
 
+          {/* View Format Switcher */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200">
+            <button
+              onClick={() => setViewMode('ecat')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                viewMode === 'ecat' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              📊 ECAT Grid Format
+            </button>
+            <button
+              onClick={() => setViewMode('matrix')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                viewMode === 'matrix' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              📅 Dept Matrix
+            </button>
+          </div>
+
           {/* Series Filter Tabs */}
           {availableBatches.length > 0 && (
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold overflow-x-auto max-w-full">
               <button
                 onClick={() => setSelectedBatch('All')}
-                className={`px-3 py-1 rounded-lg transition-all ${
+                className={`px-3 py-1.5 rounded-lg transition-all ${
                   selectedBatch === 'All'
                     ? 'bg-blue-950 text-white shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
@@ -171,7 +262,7 @@ export default function RoutineView() {
                 <button
                   key={b}
                   onClick={() => setSelectedBatch(b)}
-                  className={`px-3 py-1 rounded-lg transition-all whitespace-nowrap ${
+                  className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${
                     selectedBatch === b
                       ? 'bg-blue-950 text-white shadow-sm'
                       : 'text-slate-600 hover:text-slate-900'
@@ -182,24 +273,58 @@ export default function RoutineView() {
               ))}
             </div>
           )}
+
+          {/* PDF Download Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleDownloadPDF(null)}
+              className="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white text-xs font-extrabold px-3.5 py-2 rounded-xl shadow-md transition-all flex items-center gap-1.5"
+            >
+              <span>📥 PDF</span>
+              <span>({selectedBatch === 'All' ? 'All Series' : selectedBatch})</span>
+            </button>
+
+            {selectedBatch !== 'All' && (
+              <button
+                type="button"
+                onClick={() => handleDownloadPDF('All')}
+                className="border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold px-3 py-2 rounded-xl transition-all"
+              >
+                Download All Series PDF
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Routine Grid Surface */}
-      <div className="bg-white rounded-2xl p-4 shadow-md border border-slate-200 space-y-3">
-        <div className="flex items-center justify-between border-b pb-2">
-          <h3 className="font-extrabold text-blue-950 text-base uppercase tracking-tight flex items-center gap-2">
-            <span>⚡ RESULTING WEEKLY {selectedBatch === 'All' ? 'DEPARTMENT' : selectedBatch} ROUTINE</span>
-          </h3>
-          <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
-            Read-Only View
-          </span>
-        </div>
-
+      {/* Routine Surface */}
+      <div className="space-y-6">
         {loading ? (
-          <div className="p-8 text-center text-slate-400 text-sm italic">Loading routine matrix…</div>
+          <div className="bg-white rounded-2xl p-8 text-center text-slate-400 text-sm italic shadow-sm border border-slate-200">
+            Loading routine matrix…
+          </div>
+        ) : viewMode === 'matrix' && selectedBatch === 'All' ? (
+          <div className="bg-white rounded-2xl p-4 shadow-md border border-slate-200 space-y-3">
+            <div className="flex items-center justify-between border-b pb-2">
+              <h3 className="font-extrabold text-blue-950 text-base uppercase tracking-tight flex items-center gap-2">
+                <span>⚡ RESULTING WEEKLY DEPARTMENT ROUTINE MATRIX</span>
+              </h3>
+              <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                Full Department View
+              </span>
+            </div>
+            <RoutineGrid routines={combinedRoutines} readOnly={true} />
+          </div>
         ) : (
-          <RoutineGrid routines={combinedRoutines} readOnly={true} />
+          /* ECAT Grid Format (Image 1) */
+          <div ref={pdfContainerRef} className="space-y-6">
+            {(selectedBatch === 'All' ? availableBatches : [selectedBatch]).map((batchName) => (
+              <div key={batchName} data-pdf-sheet={batchName}>
+                <WeeklySheet batch={batchName} routines={allCombinedRoutines} />
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
