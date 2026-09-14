@@ -370,6 +370,25 @@ export default function DynamicRoutine() {
           </div>
         )}
 
+        {/* Interactive Drag & Drop Routine Grid Matrix */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+          <div className="flex justify-between items-center flex-wrap gap-2">
+            <h3 className="font-extrabold text-slate-800 text-base uppercase tracking-tight">
+              Interactive Routine Matrix ({selectedSeries})
+            </h3>
+            <span className="text-xs text-sky-800 font-bold bg-sky-50 px-3 py-1 rounded-full border border-sky-100">
+              ✋ Drag &amp; Drop Enabled
+            </span>
+          </div>
+          <RoutineGrid
+            routines={seriesRoutines}
+            onDelete={handleDelete}
+            onSwap={handleSwap}
+            onEmptyCellClick={handleEmptyCellClick}
+            currentUser={user}
+          />
+        </div>
+
         {/* Weekly Routine View */}
         <div className="space-y-2 pt-4">
           <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wide">

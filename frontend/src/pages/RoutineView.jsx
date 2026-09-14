@@ -4,6 +4,7 @@ import { jsPDF } from 'jspdf';
 import api from '../api/axios';
 import { socket } from '../socket';
 import { useAuth } from '../context/AuthContext';
+import courseCatalog from '../data/courseCatalog.json';
 import RoutineGrid from '../components/RoutineGrid';
 import RoutineHeader from '../components/RoutineHeader';
 import RoutineLegend from '../components/RoutineLegend';
@@ -78,7 +79,9 @@ export default function RoutineView() {
   }, [allCombinedRoutines, selectedBatch]);
 
   const availableBatches = useMemo(() => {
-    const set = new Set(allCombinedRoutines.map((r) => r.batch));
+    const defaultCatalogBatches = Object.keys(courseCatalog);
+    const existingBatches = allCombinedRoutines.map((r) => r.batch);
+    const set = new Set([...defaultCatalogBatches, ...existingBatches]);
     return Array.from(set);
   }, [allCombinedRoutines]);
 
@@ -117,8 +120,7 @@ export default function RoutineView() {
         const sheetBatch = sheetEl.getAttribute('data-pdf-sheet');
 
         // Filter based on target request
-        if (targetBatchName && sheetBatch !== targetBatchName) continue;
-        if (!targetBatchName && selectedBatch !== 'All' && sheetBatch !== selectedBatch) continue;
+        if (targetBatchName && targetBatchName !== 'All' && sheetBatch !== targetBatchName) continue;
 
         const canvas = await html2canvas(sheetEl, {
           scale: 2,
@@ -137,7 +139,7 @@ export default function RoutineView() {
       }
 
       if (pageCount > 0) {
-        const fileName = targetBatchName
+        const fileName = (targetBatchName && targetBatchName !== 'All')
           ? `weekly-routine-${targetBatchName.toLowerCase().replace(/[^a-z0-9]/g, '-')}.pdf`
           : selectedBatch !== 'All'
           ? `weekly-routine-${selectedBatch.toLowerCase().replace(/[^a-z0-9]/g, '-')}.pdf`
@@ -278,7 +280,7 @@ export default function RoutineView() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => handleDownloadPDF(null)}
+              onClick={() => handleDownloadPDF(selectedBatch === 'All' ? 'All' : selectedBatch)}
               className="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white text-xs font-extrabold px-3.5 py-2 rounded-xl shadow-md transition-all flex items-center gap-1.5"
             >
               <span>📥 PDF</span>
@@ -321,7 +323,11 @@ export default function RoutineView() {
           <div ref={pdfContainerRef} className="space-y-6">
             {(selectedBatch === 'All' ? availableBatches : [selectedBatch]).map((batchName) => (
               <div key={batchName} data-pdf-sheet={batchName}>
-                <WeeklySheet batch={batchName} routines={allCombinedRoutines} />
+                <WeeklySheet
+                  batch={batchName}
+                  routines={allCombinedRoutines}
+                  onDownloadPDF={() => handleDownloadPDF(batchName)}
+                />
               </div>
             ))}
           </div>

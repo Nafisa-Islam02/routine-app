@@ -3,6 +3,22 @@
 // The break (10:30-10:50) and lunch gap (1:20-2:30) never appear as options
 // because they simply aren't periods below — so they can never be booked.
 
+export function formatTime12h(timeStr) {
+  if (!timeStr) return '';
+  const parts = timeStr.split(':');
+  if (parts.length < 2) return timeStr;
+  let hours = parseInt(parts[0], 10);
+  const minutes = parts[1];
+  if (isNaN(hours)) return timeStr;
+  if (hours > 12) {
+    hours = hours - 12;
+  } else if (hours === 0) {
+    hours = 12;
+  }
+  const hStr = hours < 10 ? `0${hours}` : `${hours}`;
+  return `${hStr}:${minutes}`;
+}
+
 export const PERIODS = [
   { id: 1, block: 'A', start: '08:00', end: '08:50' },
   { id: 2, block: 'A', start: '08:50', end: '09:40' },

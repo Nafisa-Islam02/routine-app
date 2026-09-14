@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { DAYS, PERIODS, BLOCKS } from '../schedule';
+import { DAYS, PERIODS, BLOCKS, formatTime12h } from '../schedule';
 
 const BLOCK_KEYS = ['A', 'B', 'C'];
 
@@ -22,7 +22,7 @@ const ECAT_CARD_COLORS = {
   neutral: 'bg-[#334155] text-white',
 };
 
-export default function WeeklySheet({ batch, routines }) {
+export default function WeeklySheet({ batch, routines, onDownloadPDF }) {
   const slots = useMemo(() => {
     if (!routines || !batch) return [];
     return routines.filter((r) => r.batch === batch);
@@ -42,14 +42,34 @@ export default function WeeklySheet({ batch, routines }) {
 
   return (
     <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xl overflow-hidden text-white print:border-0 print:p-0">
-      {/* Printable Sheet title updated to "WEEKLY ROUTINE" as requested */}
+      {/* Header bar with Weekly Routine title & PDF download button */}
       <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
-        <h3 className="font-black text-sm sm:text-base tracking-wider uppercase text-slate-100 flex items-center gap-2">
-          <span>WEEKLY ROUTINE ({batch.toUpperCase()})</span>
-        </h3>
-        <span className="text-[10px] font-bold text-sky-400 bg-sky-950/70 border border-sky-800/60 px-2.5 py-0.5 rounded-full print:hidden">
-          ECAT Routine Grid Format
-        </span>
+        <div className="flex items-center gap-2.5">
+          <h3 className="font-black text-sm sm:text-base tracking-wider uppercase text-slate-100 flex items-center gap-2">
+            <span>WEEKLY ROUTINE ({batch.toUpperCase()})</span>
+          </h3>
+          {slots.length === 0 && (
+            <span className="text-[10px] font-semibold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
+              No classes placed yet
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 print:hidden">
+          <span className="text-[10px] font-bold text-sky-400 bg-sky-950/70 border border-sky-800/60 px-2.5 py-0.5 rounded-full">
+            ECAT Routine Grid Format
+          </span>
+          {onDownloadPDF && (
+            <button
+              type="button"
+              onClick={() => onDownloadPDF(batch)}
+              className="bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-bold px-3 py-1 rounded-lg transition-all shadow-sm flex items-center gap-1"
+              title={`Download PDF for ${batch}`}
+            >
+              <span>📥 Download PDF</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-800 bg-[#0b101d]">
@@ -102,8 +122,8 @@ export default function WeeklySheet({ batch, routines }) {
 function TimeHeader({ p }) {
   return (
     <div className="text-center py-2 border-b border-r border-slate-800 bg-[#182030] text-slate-200 font-semibold leading-tight text-[11px]">
-      <div className="font-extrabold text-white">{p.start}</div>
-      <div className="text-[10px] text-slate-400">{p.end}</div>
+      <div className="font-extrabold text-white">{formatTime12h(p.start)}</div>
+      <div className="text-[10px] text-slate-400">{formatTime12h(p.end)}</div>
     </div>
   );
 }

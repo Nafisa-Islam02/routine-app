@@ -1,6 +1,6 @@
 
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { DAYS, BLOCKS, PERIODS } from '../schedule';
+import { DAYS, BLOCKS, PERIODS, formatTime12h } from '../schedule';
 import { COLOR_CLASSES } from '../context/colors';
 
 const BLOCK_KEYS = ['A', 'B', 'C'];
@@ -154,7 +154,20 @@ export default function RoutineGrid({
     if (!dataStr || !onSwap) return;
     try {
       const data = JSON.parse(dataStr);
-      onSwap(data.slotId, targetDay, targetPeriod, targetBlock);
+      let resolvedBlock = targetBlock;
+      if (!resolvedBlock && targetPeriod) {
+        const pNum = Number(targetPeriod);
+        if ([1, 2, 3].includes(pNum)) resolvedBlock = 'A';
+        else if ([4, 5, 6].includes(pNum)) resolvedBlock = 'B';
+        else if ([7, 8, 9].includes(pNum)) resolvedBlock = 'C';
+      }
+      const isLab = data.type === 'lab';
+      onSwap(
+        data.slotId,
+        targetDay,
+        isLab ? undefined : targetPeriod,
+        isLab ? resolvedBlock : targetBlock
+      );
     } catch {
       // quiet fallback
     }
@@ -320,8 +333,8 @@ function PeriodHeader({ p, day }) {
       data-period={p.id}
       className="text-center py-1 border-r bg-amber-50/70 text-slate-800 leading-tight font-medium"
     >
-      <div className="font-semibold text-blue-950">{p.start}</div>
-      <div className="text-[10px] text-slate-500">{p.end}</div>
+      <div className="font-semibold text-blue-950">{formatTime12h(p.start)}</div>
+      <div className="text-[10px] text-slate-500">{formatTime12h(p.end)}</div>
     </div>
   );
 }
